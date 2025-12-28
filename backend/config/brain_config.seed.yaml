@@ -1,0 +1,372 @@
+# Brain Configuration - Pirties Projektavimo Interviu (Sauna Design Interview)
+# Version: 1.0
+# Language: Lithuanian (primary), English (secondary)
+
+# ============================================
+# Scoring Weights
+# ============================================
+scoring:
+  weights:
+    base_priority: 0.1        # Weight for question's base_priority
+    missing_slot: 3.0         # Points per missing slot covered
+    risk: 2.0                 # Points per active risk addressed
+    round_fit: 1.5            # Bonus if question matches current round
+    asked_penalty: -5.0       # Penalty if question was already asked
+    required_slot_bonus: 2.0  # Bonus if covers required slots
+
+# ============================================
+# Slots (Information to Collect)
+# ============================================
+slots:
+  # Core Purpose & Users (Required)
+  - key: purpose
+    label_lt: "Pirties paskirtis"
+    label_en: "Sauna purpose"
+    description: "What is the main purpose of the sauna (relaxation, health, social, business)"
+    is_required: true
+    priority_weight: 1.2
+
+  - key: users
+    label_lt: "Naudotojai"
+    label_en: "Users"
+    description: "Who will use the sauna (family, friends, clients)"
+    is_required: true
+    priority_weight: 1.1
+
+  - key: ritual
+    label_lt: "Pirties ritualas"
+    label_en: "Sauna ritual"
+    description: "Preferred sauna ritual (soft steam, traditional, with venik)"
+    is_required: true
+    priority_weight: 1.2
+
+  # Location & Infrastructure
+  - key: location
+    label_lt: "Vieta"
+    label_en: "Location"
+    description: "Where the sauna will be built (urban, rural, by water)"
+    is_required: false
+    priority_weight: 1.0
+
+  - key: infrastructure
+    label_lt: "Infrastruktūra"
+    label_en: "Infrastructure"
+    description: "Available infrastructure (water, electricity, sewage)"
+    is_required: true
+    priority_weight: 1.1
+
+  # Technical Preferences
+  - key: stove_type
+    label_lt: "Krosnies tipas"
+    label_en: "Stove type"
+    description: "Preferred stove type (periodic/mass, continuous)"
+    is_required: false
+    priority_weight: 1.0
+
+  - key: fuel_type
+    label_lt: "Kuras"
+    label_en: "Fuel type"
+    description: "Fuel preference (wood, electric, gas)"
+    is_required: false
+    priority_weight: 0.9
+
+  - key: microclimate
+    label_lt: "Mikroklimatas"
+    label_en: "Microclimate"
+    description: "Preferred temperature and humidity (60-80C typical)"
+    is_required: false
+    priority_weight: 0.9
+
+  # Space Requirements
+  - key: size_direction
+    label_lt: "Dydžio kryptis"
+    label_en: "Size direction"
+    description: "General size needs (compact, medium, large)"
+    is_required: false
+    priority_weight: 0.8
+
+  - key: room_program
+    label_lt: "Patalpų programa"
+    label_en: "Room program"
+    description: "Required rooms (steam room, rest area, shower, pool)"
+    is_required: false
+    priority_weight: 0.9
+
+  # Budget & Timeline
+  - key: budget
+    label_lt: "Biudžetas"
+    label_en: "Budget"
+    description: "Budget range or constraints"
+    is_required: false
+    priority_weight: 0.7
+
+  - key: timeline
+    label_lt: "Terminai"
+    label_en: "Timeline"
+    description: "Expected construction timeline"
+    is_required: false
+    priority_weight: 0.6
+
+# ============================================
+# Risk Rules (Conflict Detection)
+# ============================================
+risk_rules:
+  # Soft steam vs continuous stove conflict
+  - id: RISK_SOFT_STEAM_CONFLICT
+    code: RISK_SOFT_STEAM_CONFLICT
+    severity: medium
+    rule_json:
+      all:
+        - slot: ritual
+          contains_any: ["minkštas garas", "soft steam", "lengvas garas"]
+        - slot: stove_type
+          contains_any: ["nuolatinio kūrenimo", "continuous", "elektrinė"]
+    note_template: "Minkštas garas geriau gaunamas su periodinio (akumuliacinio) kūrenimo krosnimis. Nuolatinio kūrenimo krosnys duoda kitokį garą."
+
+  # Rental without proper infrastructure
+  - id: RISK_RENTAL_NO_INFRASTRUCTURE
+    code: RISK_RENTAL_NO_INFRASTRUCTURE
+    severity: high
+    rule_json:
+      all:
+        - slot: purpose
+          contains_any: ["nuoma", "rental", "verslas", "business"]
+        - slot: infrastructure
+          not_contains_any: ["nuotekos", "sewage", "kanalizacija"]
+    note_template: "Nuomai skirta pirtis be nuotekų sistemos gali sukelti problemų su sanitariniais reikalavimais."
+
+  # Winter use without water plan
+  - id: RISK_WINTER_NO_WATER
+    code: RISK_WINTER_NO_WATER
+    severity: medium
+    rule_json:
+      all:
+        - slot: users
+          contains_any: ["žiema", "winter", "visus metus", "year-round"]
+        - slot: infrastructure
+          not_contains_any: ["vandentiekis", "water supply", "šulinys", "well"]
+    note_template: "Žiemą naudojama pirtis reikalauja patikimo vandens šaltinio, kuris neužšąla."
+
+  # High capacity without proper ventilation mention
+  - id: RISK_CAPACITY_VENTILATION
+    code: RISK_CAPACITY_VENTILATION
+    severity: low
+    rule_json:
+      all:
+        - slot: users
+          contains_any: ["daug", "many", "grupė", "group", "10+", "didelis"]
+        - slot: room_program
+          not_contains_any: ["ventiliacija", "ventilation", "oro"]
+    note_template: "Didelei grupei žmonių būtina tinkamai suprojektuota ventiliacija."
+
+  # Electric stove for large space
+  - id: RISK_ELECTRIC_LARGE_SPACE
+    code: RISK_ELECTRIC_LARGE_SPACE
+    severity: medium
+    rule_json:
+      all:
+        - slot: stove_type
+          contains_any: ["elektrinė", "electric"]
+        - slot: size_direction
+          contains_any: ["didelė", "large", "erdvi", "spacious"]
+    note_template: "Elektrinė krosnis gali būti nepakankama didelei pirties erdvei. Svarstykite alternatyvas."
+
+# ============================================
+# Questions Bank (20+ questions)
+# ============================================
+questions:
+  # ============================================
+  # Round 1 - Core Purpose & Users
+  # ============================================
+  - id: Q_R1_PURPOSE
+    text_lt: "Kokia būtų pagrindinė jūsų pirties paskirtis? Ar tai bus asmeniniam naudojimui, svečiams, ar galbūt nuomai?"
+    text_en: "What would be the main purpose of your sauna? Personal use, guests, or rental?"
+    base_priority: 100
+    round_hint: 1
+    slot_coverage: [purpose]
+    risk_coverage: []
+
+  - id: Q_R1_USERS
+    text_lt: "Kas dažniausiai naudosis pirtimi? Kiek žmonių vienu metu planuojate priimti?"
+    text_en: "Who will mainly use the sauna? How many people at once?"
+    base_priority: 95
+    round_hint: 1
+    slot_coverage: [users]
+    risk_coverage: []
+
+  - id: Q_R1_RITUAL
+    text_lt: "Kokį pirties ritualą labiausiai mėgstate? Gal minkšto garo, gal tradicinį su vantomis, ar tiesiog poilsį šilumoje?"
+    text_en: "What sauna ritual do you prefer? Soft steam, traditional with venik, or just relaxing in warmth?"
+    base_priority: 90
+    round_hint: 1
+    slot_coverage: [ritual]
+    risk_coverage: [RISK_SOFT_STEAM_CONFLICT]
+
+  - id: Q_R1_LOCATION_BASIC
+    text_lt: "Kur planuojate statyti pirtį? Ar tai bus mieste, kaime, prie vandens telkinio?"
+    text_en: "Where do you plan to build the sauna? City, countryside, by water?"
+    base_priority: 85
+    round_hint: 1
+    slot_coverage: [location]
+    risk_coverage: []
+
+  - id: Q_R1_EXPERIENCE
+    text_lt: "Papasakokite apie savo pirties patirtį - kokiose pirtyse lankėtės ir kas jums patiko labiausiai?"
+    text_en: "Tell about your sauna experience - which saunas have you visited and what did you like most?"
+    base_priority: 80
+    round_hint: 1
+    slot_coverage: [ritual, purpose]
+    risk_coverage: []
+
+  # ============================================
+  # Round 2 - Technical Details
+  # ============================================
+  - id: Q_R2_INFRASTRUCTURE
+    text_lt: "Kokia infrastruktūra yra sklype? Ar yra vandentiekis, elektra, nuotekos?"
+    text_en: "What infrastructure exists on the plot? Water supply, electricity, sewage?"
+    base_priority: 95
+    round_hint: 2
+    slot_coverage: [infrastructure]
+    risk_coverage: [RISK_RENTAL_NO_INFRASTRUCTURE, RISK_WINTER_NO_WATER]
+
+  - id: Q_R2_STOVE_PREFERENCE
+    text_lt: "Ar turite pageidavimų dėl krosnies tipo? Malkinė ar elektrinė? Periodinio ar nuolatinio kūrenimo?"
+    text_en: "Do you have preferences for stove type? Wood or electric? Periodic or continuous heating?"
+    base_priority: 90
+    round_hint: 2
+    slot_coverage: [stove_type, fuel_type]
+    risk_coverage: [RISK_SOFT_STEAM_CONFLICT, RISK_ELECTRIC_LARGE_SPACE]
+
+  - id: Q_R2_TEMPERATURE
+    text_lt: "Kokią temperatūrą ir drėgmę pirtyje mėgstate? Ar mėgstate karštesnę pirtį, ar švelnesnius 60-70 laipsnių?"
+    text_en: "What temperature and humidity do you prefer? Hotter sauna or milder 60-70 degrees?"
+    base_priority: 85
+    round_hint: 2
+    slot_coverage: [microclimate]
+    risk_coverage: []
+
+  - id: Q_R2_ROOMS
+    text_lt: "Kokias patalpas norėtumėte turėti šalia garinės? Poilsio zona, dušai, baseinėlis, persirengimo kambarys?"
+    text_en: "What rooms would you like besides the steam room? Rest area, showers, small pool, changing room?"
+    base_priority: 85
+    round_hint: 2
+    slot_coverage: [room_program]
+    risk_coverage: [RISK_CAPACITY_VENTILATION]
+
+  - id: Q_R2_SIZE
+    text_lt: "Koks apytikris pirties dydis jums atrodo tinkamas? Kompaktiška, vidutinė, ar erdvi pirtis?"
+    text_en: "What approximate sauna size seems right? Compact, medium, or spacious?"
+    base_priority: 80
+    round_hint: 2
+    slot_coverage: [size_direction]
+    risk_coverage: [RISK_ELECTRIC_LARGE_SPACE]
+
+  - id: Q_R2_SEASONS
+    text_lt: "Ar planuojate naudotis pirtimi visus metus, ar tik tam tikru sezonu?"
+    text_en: "Do you plan to use the sauna year-round or only during certain seasons?"
+    base_priority: 75
+    round_hint: 2
+    slot_coverage: [infrastructure]
+    risk_coverage: [RISK_WINTER_NO_WATER]
+
+  - id: Q_R2_WATER_PROCEDURES
+    text_lt: "Ar svarbu turėti galimybę atsigaivinti vandeniu po pirties - dušas, kubilą, išėjimą prie vandens telkinio?"
+    text_en: "Is it important to have cooling options - shower, tub, access to a water body?"
+    base_priority: 75
+    round_hint: 2
+    slot_coverage: [room_program, infrastructure]
+    risk_coverage: []
+
+  # ============================================
+  # Round 3 - Budget & Specifics
+  # ============================================
+  - id: Q_R3_BUDGET
+    text_lt: "Kokį biudžetą esate numatę pirties projektui ir statyboms? Ar turite orientacinį skaičių?"
+    text_en: "What budget have you allocated for the sauna project and construction?"
+    base_priority: 90
+    round_hint: 3
+    slot_coverage: [budget]
+    risk_coverage: []
+
+  - id: Q_R3_TIMELINE
+    text_lt: "Kokie jūsų terminai? Kada norėtumėte turėti veikiančią pirtį?"
+    text_en: "What is your timeline? When would you like to have a working sauna?"
+    base_priority: 85
+    round_hint: 3
+    slot_coverage: [timeline]
+    risk_coverage: []
+
+  - id: Q_R3_MATERIALS
+    text_lt: "Ar turite pageidavimų dėl medžiagų? Gal tam tikros medienos rūšys ar natūralios medžiagos?"
+    text_en: "Do you have material preferences? Specific wood types or natural materials?"
+    base_priority: 80
+    round_hint: 3
+    slot_coverage: [microclimate]
+    risk_coverage: []
+
+  - id: Q_R3_SPECIAL_NEEDS
+    text_lt: "Ar yra kokių nors specialių poreikių ar apribojimų, apie kuriuos turėtume žinoti?"
+    text_en: "Are there any special needs or constraints we should know about?"
+    base_priority: 80
+    round_hint: 3
+    slot_coverage: []
+    risk_coverage: []
+
+  - id: Q_R3_DESIGN_STYLE
+    text_lt: "Ar turite vizijos apie pirties išvaizdą ir stilių? Tradicinis, modernus, skandinaviškas?"
+    text_en: "Do you have a vision for the sauna's appearance? Traditional, modern, Scandinavian?"
+    base_priority: 75
+    round_hint: 3
+    slot_coverage: []
+    risk_coverage: []
+
+  - id: Q_R3_ACCESSIBILITY
+    text_lt: "Ar reikia atsižvelgti į prieinamumo reikalavimus - vyresnio amžiaus žmonėms ar žmonėms su negalia?"
+    text_en: "Do we need to consider accessibility - for elderly or people with disabilities?"
+    base_priority: 75
+    round_hint: 3
+    slot_coverage: [users]
+    risk_coverage: []
+
+  # ============================================
+  # Clarifier Questions (Risk-Triggered)
+  # ============================================
+  - id: Q_CLARIFY_STOVE_TYPE
+    text_lt: "Norint gauti minkštą garą, geriausia naudoti akumuliacinę (periodinio kūrenimo) krosnį. Ar tai jums priimtina, ar ieškote patogesnio sprendimo?"
+    text_en: "For soft steam, accumulating (periodic) stoves work best. Is this acceptable, or are you looking for a more convenient solution?"
+    base_priority: 70
+    round_hint: null
+    slot_coverage: [stove_type]
+    risk_coverage: [RISK_SOFT_STEAM_CONFLICT]
+
+  - id: Q_CLARIFY_INFRASTRUCTURE_RENTAL
+    text_lt: "Kadangi planuojate nuomą, kaip ketinate spręsti nuotekų klausimą? Ar yra galimybė prisijungti prie kanalizacijos?"
+    text_en: "Since you plan rental, how will you handle sewage? Is there a possibility to connect to the sewer system?"
+    base_priority: 85
+    round_hint: null
+    slot_coverage: [infrastructure]
+    risk_coverage: [RISK_RENTAL_NO_INFRASTRUCTURE]
+
+  - id: Q_CLARIFY_WINTER_WATER
+    text_lt: "Jei planuojate naudotis žiemą, kaip užtikrinsite vandens tiekimą šaltuoju metų laiku?"
+    text_en: "If you plan winter use, how will you ensure water supply during cold months?"
+    base_priority: 80
+    round_hint: null
+    slot_coverage: [infrastructure]
+    risk_coverage: [RISK_WINTER_NO_WATER]
+
+  - id: Q_CLARIFY_VENTILATION
+    text_lt: "Didelei grupei žmonių svarbi gera ventiliacija. Ar esate galvoję apie oro cirkuliaciją pirtyje?"
+    text_en: "Good ventilation is important for large groups. Have you thought about air circulation in the sauna?"
+    base_priority: 70
+    round_hint: null
+    slot_coverage: [room_program]
+    risk_coverage: [RISK_CAPACITY_VENTILATION]
+
+  - id: Q_CLARIFY_ELECTRIC_SIZE
+    text_lt: "Elektrinė krosnis gali būti ribota didelei erdvei. Ar svarstytumėte malkinę krosnį arba mažesnę pirties erdvę?"
+    text_en: "Electric stoves may be limited for large spaces. Would you consider a wood stove or smaller steam room?"
+    base_priority: 75
+    round_hint: null
+    slot_coverage: [stove_type, size_direction]
+    risk_coverage: [RISK_ELECTRIC_LARGE_SPACE]
