@@ -107,9 +107,16 @@ journalctl -u agent-brain -f
 - Admin key stored in localStorage on frontend
 - CORS allows Vercel frontend + localhost:3000
 
-## Recent Updates (voice agent review)
+## Protected Files (DO NOT MODIFY)
 
-- Backend: added context-rich history (agent questions logged) and combined answers include question text to improve LLM extraction; asked_question_ids now set when questions are served.
-- Backend: added /session/{id}/download and /session/{id}/translate endpoints; audio uploads now size-limited via MAX_AUDIO_BYTES; Whisper/Claude calls run in threads to avoid blocking async loop; Claude model is configurable via ANTHROPIC_MODEL.
-- Frontend: results page no longer shows mock report on failure—surfaces error instead; download/translate buttons now hit real endpoints.
-- Env: new vars in backend/.env.example `ANTHROPIC_MODEL`, `MAX_AUDIO_BYTES`; adjust your .env accordingly.
+These files handle backend integration - changes break the app:
+- `frontend/lib/api.ts` - API client with all backend calls
+- `frontend/lib/types.ts` - TypeScript interfaces matching backend
+- `frontend/lib/audio-utils.ts` - Audio processing utilities
+
+## Multi-Agent Handoff
+
+When handing frontend work to another AI agent:
+- `frontend/DESIGN_AGENT_INSTRUCTIONS.md` - What can/cannot be changed
+- `frontend/FRONTEND_TECHNICAL_SPEC.md` - Complete API contract and state docs
+- Agent must create `DESIGN_CHANGES.md` when done to document changes
