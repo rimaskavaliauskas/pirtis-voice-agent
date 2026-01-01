@@ -142,6 +142,11 @@ export default function InterviewPage() {
 
   // Translate questions when language changes or questions load
   useEffect(() => {
+    // Clear translations immediately when content changes (prevents showing old/wrong text)
+    if (language !== 'lt') {
+      setTranslatedTexts({});
+    }
+
     const translateQuestions = async () => {
       if (language === 'lt' || state.questions.length === 0) {
         setTranslatedTexts({});
