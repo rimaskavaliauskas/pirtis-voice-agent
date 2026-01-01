@@ -122,10 +122,16 @@ export function QuestionCard({
       </CardHeader>
 
       <CardContent className="pt-4">
-        <p className={`text-lg leading-relaxed ${isActive ? 'text-white' : 'text-gray-400'}`}>
-          {questionText}
-          {isTranslating && <span className="ml-1 animate-pulse">...</span>}
-        </p>
+        {isTranslating ? (
+          <div className="space-y-2">
+            <div className="h-5 bg-white/10 rounded animate-pulse w-full" />
+            <div className="h-5 bg-white/10 rounded animate-pulse w-3/4" />
+          </div>
+        ) : (
+          <p className={`text-lg leading-relaxed ${isActive ? 'text-white' : 'text-gray-400'}`}>
+            {questionText}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

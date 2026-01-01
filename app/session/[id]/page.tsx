@@ -217,10 +217,13 @@ export default function InterviewPage() {
   }, [language, state.questions, state.roundSummary]);
 
   // Helper to get displayed text (translated or original)
-  const getDisplayText = useCallback((originalText: string): string => {
+  // Returns null if translation is in progress (to show skeleton)
+  const getDisplayText = useCallback((originalText: string): string | null => {
     if (language === 'lt') return originalText;
+    // If translating and no translation yet, return null to show skeleton
+    if (isTranslating && !translatedTexts[originalText]) return null;
     return translatedTexts[originalText] || originalText;
-  }, [language, translatedTexts]);
+  }, [language, translatedTexts, isTranslating]);
 
   // Get current question
   const currentQuestion = state.questions[state.activeQuestionIndex];
@@ -405,9 +408,8 @@ export default function InterviewPage() {
             <CardContent className="pt-4">
               <p className="text-sm text-gray-300">
                 <span className="font-medium text-primary">{t('session.roundSummary')} </span>
-                {getDisplayText(state.roundSummary)}
-                {isTranslating && language !== 'lt' && (
-                  <span className="ml-1 animate-pulse">...</span>
+                {getDisplayText(state.roundSummary) || (
+                  <span className="inline-block h-4 w-48 bg-white/10 rounded animate-pulse" />
                 )}
               </p>
             </CardContent>
@@ -424,10 +426,10 @@ export default function InterviewPage() {
             >
               <QuestionCard
                 questionNumber={index + 1}
-                questionText={getDisplayText(q.question.text)}
+                questionText={getDisplayText(q.question.text) || ''}
                 status={q.isConfirmed ? 'confirmed' : q.recordingState}
                 isActive={index === state.activeQuestionIndex}
-                isTranslating={isTranslating && language !== 'lt'}
+                isTranslating={getDisplayText(q.question.text) === null}
               />
             </div>
           ))}
@@ -442,9 +444,8 @@ export default function InterviewPage() {
                   {t('session.question', { number: state.activeQuestionIndex + 1 })}
                 </p>
                 <p className="text-2xl font-light leading-relaxed text-white">
-                  {getDisplayText(currentQuestion.question.text)}
-                  {isTranslating && language !== 'lt' && (
-                    <span className="ml-2 text-sm text-muted-foreground animate-pulse">...</span>
+                  {getDisplayText(currentQuestion.question.text) || (
+                    <span className="inline-block h-8 w-full max-w-xl bg-white/10 rounded animate-pulse" />
                   )}
                 </p>
               </div>
@@ -467,7 +468,7 @@ export default function InterviewPage() {
               {currentQuestion.recordingState === 'done' && currentQuestion.transcript && (
                 <TranscriptPreview
                   transcript={currentQuestion.transcript}
-                  questionText={getDisplayText(currentQuestion.question.text)}
+                  questionText={getDisplayText(currentQuestion.question.text) || currentQuestion.question.text}
                   onConfirm={handleConfirmTranscript}
                   onRetry={handleRetryRecording}
                   className="mx-auto max-w-lg"
