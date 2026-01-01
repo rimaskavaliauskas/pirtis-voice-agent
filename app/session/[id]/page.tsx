@@ -143,10 +143,7 @@ export default function InterviewPage() {
   // Translate questions when language changes or questions load
   useEffect(() => {
     const translateQuestions = async () => {
-      console.log('[Translation] Effect triggered:', { language, questionsCount: state.questions.length });
-
       if (language === 'lt' || state.questions.length === 0) {
-        console.log('[Translation] Skipping - language is lt or no questions');
         setTranslatedTexts({});
         return;
       }
@@ -186,15 +183,12 @@ export default function InterviewPage() {
       }
 
       setIsTranslating(true);
-      console.log('[Translation] Starting translation for:', textsToTranslate);
       const newTranslated: Record<string, string> = {};
 
       // Translate all texts in parallel
       await Promise.all(
         textsToTranslate.map(async (text) => {
-          console.log('[Translation] Translating:', text.substring(0, 50));
           const translated = await translateText(text, language as 'en' | 'ru');
-          console.log('[Translation] Result:', translated.substring(0, 50));
           const cacheKey = `${language}:${text}`;
           translationCache.set(cacheKey, translated);
           newTranslated[text] = translated;
@@ -215,7 +209,6 @@ export default function InterviewPage() {
         }
       }
 
-      console.log('[Translation] Setting translated texts:', Object.keys(newTranslated).length, 'items');
       setTranslatedTexts(newTranslated);
       setIsTranslating(false);
     };
@@ -226,14 +219,7 @@ export default function InterviewPage() {
   // Helper to get displayed text (translated or original)
   const getDisplayText = useCallback((originalText: string): string => {
     if (language === 'lt') return originalText;
-    const translated = translatedTexts[originalText];
-    console.log('[Translation] getDisplayText:', {
-      language,
-      hasTranslation: !!translated,
-      original: originalText.substring(0, 30),
-      translated: translated?.substring(0, 30)
-    });
-    return translated || originalText;
+    return translatedTexts[originalText] || originalText;
   }, [language, translatedTexts]);
 
   // Get current question
