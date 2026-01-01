@@ -39,23 +39,23 @@ describe('QuestionCard', () => {
     expect(screen.getByText('Review')).toBeInTheDocument();
   });
 
-  it('shows Confirmed status', () => {
+  it('shows Done status for confirmed state', () => {
     render(<QuestionCard {...defaultProps} status="confirmed" />);
 
-    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.getByText('Done')).toBeInTheDocument();
   });
 
   it('applies active styling when isActive is true', () => {
     const { container } = render(<QuestionCard {...defaultProps} isActive={true} />);
 
-    // Check for ring class (active styling)
-    expect(container.firstChild).toHaveClass('ring-2');
+    // Check for scale class (active styling)
+    expect(container.firstChild).toHaveClass('scale-[1.02]');
   });
 
   it('applies confirmed styling when status is confirmed', () => {
     const { container } = render(<QuestionCard {...defaultProps} status="confirmed" />);
 
     // Check for green border (confirmed styling)
-    expect(container.firstChild).toHaveClass('border-green-300');
+    expect(container.firstChild).toHaveClass('border-green-500/30');
   });
 });
