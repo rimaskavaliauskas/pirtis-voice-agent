@@ -6,8 +6,9 @@ AI-powered voice interview system for personalized sauna (pirtis) design recomme
 
 | What | Where |
 |------|-------|
-| **Frontend URL** | https://pirtis-voice-agent.vercel.app |
-| **Admin Panel** | https://pirtis-voice-agent.vercel.app/admin |
+| **Frontend URL** | https://pirtis-voice-agent-hy5bwirdp-rimaskavs-projects.vercel.app |
+| **GitHub Repo** | https://github.com/rimaskavaliauskas/pirtis-voice-agent |
+| **Vercel Project** | https://vercel.com/rimaskavs-projects/pirtis-voice-agent-dev |
 | **Backend API** | http://65.108.246.252:8000 |
 | **SSH to VPS** | `ssh -i "D:\AI\aleksandro kursas\SSHKEY\id_ed25519" root@65.108.246.252` |
 | **Restart Backend** | `systemctl restart agent-brain` |
@@ -86,8 +87,12 @@ POST /brain/config/import        - Import YAML config
 cd frontend
 npm install
 npm run dev        # localhost:3000
+npm test           # Run Jest tests
 npm run build      # Build for production
-npx vercel --prod  # Deploy to Vercel
+
+# Deployment (auto-deploy enabled on git push)
+git add . && git commit -m "message" && git push  # Auto-deploys to Vercel
+npx vercel --prod  # Manual deployment (if needed)
 ```
 
 ### Backend (on VPS)
@@ -101,8 +106,17 @@ journalctl -u agent-brain -f
 
 ## Important Notes
 
-- Backend uses LLM fallback: Gemini -> Claude on 429 errors
-- Whisper model is "small" for speed (was "medium")
-- Reports are stored in Lithuanian, translated on demand
-- Admin key stored in localStorage on frontend
-- CORS allows Vercel frontend + localhost:3000
+- **Backend shared**: VPS serves multiple frontend projects via same API endpoints
+- **Auto-deploy**: GitHub push to master triggers Vercel deployment automatically
+- **Backend proxy**: Vercel rewrites `/api/backend/*` to `http://65.108.246.252:8000/*` (see vercel.json)
+- **LLM fallback**: Gemini -> Claude on 429 errors
+- **Whisper model**: "small" for speed (was "medium")
+- **Reports**: Stored in Lithuanian, translated on demand
+- **Admin key**: Stored in localStorage on frontend
+- **CORS**: Allows Vercel frontend + localhost:3000
+
+## Gotchas
+
+- **API URL fallback**: Use `/api/backend` (not `localhost:8000`) as fallback in `lib/api.ts` - `.env.local` isn't deployed to Vercel
+- **Test assertions**: Drift when UI text changes - update `__tests__/` assertions to match component implementation
+- Run `npm test` before deploying to catch assertion mismatches
