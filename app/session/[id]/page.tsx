@@ -64,7 +64,7 @@ export default function InterviewPage() {
   const { t, language } = useTranslation();
 
   // State for translated question texts (key: original text, value: translated)
-  const [translatedTexts, setTranslatedTexts] = useState<Map<string, string>>(new Map());
+  const [translatedTexts, setTranslatedTexts] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState(false);
 
   const [state, setState] = useState<InterviewState>({
@@ -144,7 +144,7 @@ export default function InterviewPage() {
   useEffect(() => {
     const translateQuestions = async () => {
       if (language === 'lt' || state.questions.length === 0) {
-        setTranslatedTexts(new Map());
+        setTranslatedTexts({});
         return;
       }
 
@@ -165,17 +165,17 @@ export default function InterviewPage() {
 
       if (textsToTranslate.length === 0) {
         // All already cached, just update state from cache
-        const newTranslated = new Map<string, string>();
+        const newTranslated: Record<string, string> = {};
         state.questions.forEach(q => {
           const cacheKey = `${language}:${q.question.text}`;
           if (translationCache.has(cacheKey)) {
-            newTranslated.set(q.question.text, translationCache.get(cacheKey)!);
+            newTranslated[q.question.text] = translationCache.get(cacheKey)!;
           }
         });
         if (state.roundSummary) {
           const cacheKey = `${language}:${state.roundSummary}`;
           if (translationCache.has(cacheKey)) {
-            newTranslated.set(state.roundSummary, translationCache.get(cacheKey)!);
+            newTranslated[state.roundSummary] = translationCache.get(cacheKey)!;
           }
         }
         setTranslatedTexts(newTranslated);
@@ -183,29 +183,29 @@ export default function InterviewPage() {
       }
 
       setIsTranslating(true);
-      const newTranslated = new Map<string, string>();
+      const newTranslated: Record<string, string> = {};
 
-      // Translate all texts
+      // Translate all texts in parallel
       await Promise.all(
         textsToTranslate.map(async (text) => {
           const translated = await translateText(text, language as 'en' | 'ru');
           const cacheKey = `${language}:${text}`;
           translationCache.set(cacheKey, translated);
-          newTranslated.set(text, translated);
+          newTranslated[text] = translated;
         })
       );
 
       // Add cached translations
       state.questions.forEach(q => {
         const cacheKey = `${language}:${q.question.text}`;
-        if (translationCache.has(cacheKey) && !newTranslated.has(q.question.text)) {
-          newTranslated.set(q.question.text, translationCache.get(cacheKey)!);
+        if (translationCache.has(cacheKey) && !newTranslated[q.question.text]) {
+          newTranslated[q.question.text] = translationCache.get(cacheKey)!;
         }
       });
       if (state.roundSummary) {
         const cacheKey = `${language}:${state.roundSummary}`;
-        if (translationCache.has(cacheKey) && !newTranslated.has(state.roundSummary)) {
-          newTranslated.set(state.roundSummary, translationCache.get(cacheKey)!);
+        if (translationCache.has(cacheKey) && !newTranslated[state.roundSummary]) {
+          newTranslated[state.roundSummary] = translationCache.get(cacheKey)!;
         }
       }
 
@@ -219,7 +219,7 @@ export default function InterviewPage() {
   // Helper to get displayed text (translated or original)
   const getDisplayText = useCallback((originalText: string): string => {
     if (language === 'lt') return originalText;
-    return translatedTexts.get(originalText) || originalText;
+    return translatedTexts[originalText] || originalText;
   }, [language, translatedTexts]);
 
   // Get current question
