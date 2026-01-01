@@ -52,6 +52,7 @@ POST /session/{id}/answer        - LLM slot extraction, next questions
 POST /session/{id}/finalize      - Generate report
 POST /session/{id}/translate     - Translate report (EN/RU)
 GET  /session/{id}/download      - Download markdown
+POST /translate                  - Translate any text (for dynamic UI content)
 GET  /brain/config/export        - Export YAML config
 POST /brain/config/import        - Import YAML config
 ```
@@ -61,6 +62,7 @@ POST /brain/config/import        - Import YAML config
 ### Frontend (`frontend/`)
 - `lib/api.ts` - API client with retry logic
 - `lib/types.ts` - TypeScript interfaces
+- `lib/translations/` - i18n: context.tsx (LanguageProvider), en.ts/lt.ts/ru.ts (static strings)
 - `app/page.tsx` - Landing page
 - `app/session/[id]/page.tsx` - Interview UI
 - `app/results/[id]/page.tsx` - Results + translation
@@ -120,3 +122,11 @@ journalctl -u agent-brain -f
 - **API URL fallback**: Use `/api/backend` (not `localhost:8000`) as fallback in `lib/api.ts` - `.env.local` isn't deployed to Vercel
 - **Test assertions**: Drift when UI text changes - update `__tests__/` assertions to match component implementation
 - Run `npm test` before deploying to catch assertion mismatches
+
+## i18n Translation Patterns
+
+- **Static UI text**: Use `lib/translations/` files + `useTranslation()` hook with `t('key.path')`
+- **Dynamic content** (questions, summaries): Call `POST /translate` endpoint, cache results
+- **React state for translations**: Use `Record<string, string>` NOT `Map` - React doesn't detect Map changes properly
+- **Prevent wrong language flash**: Clear translation state immediately when content changes, show skeleton until translation completes
+- **Language storage**: `localStorage.getItem('pirtis-language')` - used by both LanguageProvider and loading-messages.ts
