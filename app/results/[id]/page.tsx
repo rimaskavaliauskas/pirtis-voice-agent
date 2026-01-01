@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ReportPreview } from '@/components/report-preview';
+import { FeedbackForm } from '@/components/feedback-form';
 import { getResults, downloadReport, translateReport, isValidSessionId } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
@@ -288,6 +289,12 @@ export default function ResultsPage() {
           sessionId={sessionId}
           onDownload={showTranslation && translatedMarkdown ? handleDownloadTranslation : handleDownload}
           onStartNew={handleStartNew}
+        />
+
+        {/* Feedback Section */}
+        <FeedbackForm
+          sessionId={sessionId}
+          className="max-w-xl mx-auto"
         />
 
         {/* Session Info */}

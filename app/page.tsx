@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { startSession } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation, type Language } from '@/lib/translations';
+import type { InterviewMode } from '@/lib/types';
 
 const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'lt', label: 'Lietuvių', flag: '🇱🇹' },
@@ -17,12 +18,13 @@ const LANGUAGES: { code: Language; label: string; flag: string }[] = [
 export default function LandingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [interviewMode, setInterviewMode] = useState<InterviewMode>('quick');
   const { t, language, setLanguage } = useTranslation();
 
   const handleStartInterview = async () => {
     setIsLoading(true);
     try {
-      const response = await startSession(language);
+      const response = await startSession(language, interviewMode);
       router.push(`/session/${response.session_id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
@@ -87,6 +89,53 @@ export default function LandingPage() {
                     <span className="font-medium">{lang.label}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Interview Mode Selection */}
+            <div className="space-y-3 text-center">
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">{t('landing.interviewMode')}</span>
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                <button
+                  onClick={() => setInterviewMode('quick')}
+                  className={`
+                    px-6 py-4 rounded-xl border transition-all duration-300 text-left
+                    ${interviewMode === 'quick'
+                      ? 'bg-primary/20 text-primary border-primary shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                      : 'bg-black/20 text-gray-400 border-white/5 hover:border-white/20 hover:bg-black/40'}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center
+                      ${interviewMode === 'quick' ? 'border-primary' : 'border-gray-500'}`}>
+                      {interviewMode === 'quick' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <div>
+                      <span className="font-medium block">{t('landing.quickMode')}</span>
+                      <span className="text-xs opacity-70">{t('landing.quickModeDesc')}</span>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setInterviewMode('precise')}
+                  className={`
+                    px-6 py-4 rounded-xl border transition-all duration-300 text-left
+                    ${interviewMode === 'precise'
+                      ? 'bg-primary/20 text-primary border-primary shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                      : 'bg-black/20 text-gray-400 border-white/5 hover:border-white/20 hover:bg-black/40'}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center
+                      ${interviewMode === 'precise' ? 'border-primary' : 'border-gray-500'}`}>
+                      {interviewMode === 'precise' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <div>
+                      <span className="font-medium block">{t('landing.preciseMode')}</span>
+                      <span className="text-xs opacity-70">{t('landing.preciseModeDesc')}</span>
+                    </div>
+                  </div>
+                </button>
               </div>
             </div>
 

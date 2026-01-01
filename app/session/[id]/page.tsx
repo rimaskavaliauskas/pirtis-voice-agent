@@ -10,10 +10,12 @@ import { QuestionCard } from '@/components/question-card';
 import { RoundIndicator } from '@/components/round-indicator';
 import { ProcessingOverlay } from '@/components/processing-overlay';
 import { SessionSkeleton } from '@/components/session-skeleton';
+import { InterviewProgress } from '@/components/interview-progress';
+import { ContactForm } from '@/components/contact-form';
 import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState, translateText } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
-import type { Question, QuestionState, RecordingState, RiskFlag } from '@/lib/types';
+import type { Question, QuestionState, RecordingState, RiskFlag, InterviewMode, SlotStatus, ContactInfo } from '@/lib/types';
 
 // ============================================
 // Types
@@ -23,6 +25,7 @@ type InterviewPhase =
   | 'loading'
   | 'active'
   | 'submitting'
+  | 'collecting_contact'
   | 'finalizing'
   | 'error';
 
@@ -34,6 +37,8 @@ interface InterviewState {
   roundSummary: string | null;
   riskFlags: RiskFlag[];
   error: string | null;
+  interviewMode: InterviewMode;
+  slotStatus: SlotStatus[];
 }
 
 // Cache for translated texts
@@ -75,6 +80,8 @@ export default function InterviewPage() {
     roundSummary: null,
     riskFlags: [],
     error: null,
+    interviewMode: 'quick',
+    slotStatus: [],
   });
 
   // Fetch session state from backend
@@ -126,6 +133,8 @@ export default function InterviewPage() {
             note: rf.note || '',
             evidence: rf.evidence,
           })),
+          interviewMode: (response.interview_mode as InterviewMode) || 'quick',
+          slotStatus: response.slot_status || [],
         }));
       } catch (error) {
         console.error('Failed to fetch session:', error);
@@ -330,13 +339,12 @@ export default function InterviewPage() {
       const response = await submitAnswers(sessionId, answersRequest);
 
       if (response.is_complete) {
-        // All rounds done, finalize
-        setState((s) => ({ ...s, phase: 'finalizing' }));
-
-        await finalizeSession(sessionId);
-
-        // Redirect to results
-        router.push(`/results/${sessionId}`);
+        // All rounds done, go to contact collection
+        setState((s) => ({
+          ...s,
+          phase: 'collecting_contact',
+          slotStatus: response.slot_status || s.slotStatus,
+        }));
       } else {
         // Move to next round
         setState((s) => ({
@@ -347,6 +355,7 @@ export default function InterviewPage() {
           activeQuestionIndex: 0,
           roundSummary: response.round_summary,
           riskFlags: response.risk_flags,
+          slotStatus: response.slot_status || s.slotStatus,
         }));
 
         toast.success(`Round ${response.round - 1} complete! Starting Round ${response.round}`);
@@ -362,6 +371,34 @@ export default function InterviewPage() {
   const handleQuestionClick = useCallback((index: number) => {
     setState((s) => ({ ...s, activeQuestionIndex: index }));
   }, []);
+
+  // Handle contact form submission
+  const handleContactSubmit = useCallback(async (contactInfo: ContactInfo) => {
+    setState((s) => ({ ...s, phase: 'finalizing' }));
+
+    try {
+      await finalizeSession(sessionId, contactInfo);
+      router.push(`/results/${sessionId}`);
+    } catch (error) {
+      console.error('Finalize failed:', error);
+      toast.error('Failed to generate report. Please try again.');
+      setState((s) => ({ ...s, phase: 'collecting_contact' }));
+    }
+  }, [sessionId, router]);
+
+  // Handle contact form skip
+  const handleContactSkip = useCallback(async () => {
+    setState((s) => ({ ...s, phase: 'finalizing' }));
+
+    try {
+      await finalizeSession(sessionId);
+      router.push(`/results/${sessionId}`);
+    } catch (error) {
+      console.error('Finalize failed:', error);
+      toast.error('Failed to generate report. Please try again.');
+      setState((s) => ({ ...s, phase: 'collecting_contact' }));
+    }
+  }, [sessionId, router]);
 
   // Render loading state with skeleton
   if (state.phase === 'loading') {
@@ -396,6 +433,19 @@ export default function InterviewPage() {
     );
   }
 
+  // Show contact collection form
+  if (state.phase === 'collecting_contact') {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <ContactForm
+          onSubmit={handleContactSubmit}
+          onSkip={handleContactSkip}
+          className="max-w-md w-full"
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -407,6 +457,14 @@ export default function InterviewPage() {
             questionsAnswered={confirmedCount}
           />
         </div>
+
+        {/* Interview Progress (Precise mode only) */}
+        {state.interviewMode === 'precise' && state.slotStatus.length > 0 && (
+          <InterviewProgress
+            slotStatus={state.slotStatus}
+            currentRound={state.currentRound}
+          />
+        )}
 
         {/* Round Summary (if available) */}
         {state.roundSummary && (

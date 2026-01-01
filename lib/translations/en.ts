@@ -4,6 +4,11 @@ export const en = {
     subtitle: "Your personal AI architect for the perfect sauna experience.",
     tagline: "Voice-powered • Personalized • Professional",
     selectLanguage: "Select Language",
+    interviewMode: "Interview Style",
+    quickMode: "Quick",
+    quickModeDesc: "Fewer questions, ~5 min",
+    preciseMode: "Precise",
+    preciseModeDesc: "Thorough consultation, ~10 min",
     startButton: "Start",
     initializing: "Initializing...",
     steps: {
@@ -19,7 +24,12 @@ export const en = {
     submitRound: "Submit Round {number}",
     finishInterview: "Finish Interview",
     error: "Error",
-    goHome: "Go Home"
+    goHome: "Go Home",
+    clarifying: "Let me clarify...",
+    interviewProgress: "Interview Progress",
+    slotFilled: "Collected",
+    slotPartial: "Needs clarification",
+    slotEmpty: "Not yet collected"
   },
   questionCard: {
     pending: "Pending",
@@ -66,5 +76,49 @@ export const en = {
     captured: "Recording captured",
     tapToSpeak: "TAP TO SPEAK",
     notSupported: "Audio recording is not supported in this browser."
+  },
+  contact: {
+    title: "Almost done!",
+    subtitle: "Please share your contact information",
+    name: "Name",
+    namePlaceholder: "Your name",
+    email: "Email (optional)",
+    emailPlaceholder: "your@email.com",
+    phone: "Phone (optional)",
+    phonePlaceholder: "+1 234 567 8900",
+    submit: "Generate Report",
+    skip: "Skip"
+  },
+  feedback: {
+    title: "How was your experience?",
+    ratingLabel: "Rating",
+    recordFeedback: "Record Feedback",
+    yourFeedback: "Your feedback",
+    edit: "Edit",
+    submit: "Submit",
+    submitting: "Submitting...",
+    thankYou: "Thank you for your feedback!"
+  },
+  slots: {
+    purpose: "Purpose",
+    ritual: "Ritual",
+    infrastructure: "Infrastructure",
+    users: "Users",
+    location: "Location",
+    stove_type: "Stove Type",
+    fuel_type: "Fuel Type",
+    microclimate: "Microclimate",
+    room_program: "Room Program",
+    size_direction: "Size",
+    budget: "Budget",
+    timeline: "Timeline"
+  },
+  admin: {
+    reportFooter: "Report Footer",
+    reportFooterPlaceholder: "Enter footer text...",
+    feedbackTab: "Feedback",
+    averageRating: "Average Rating",
+    totalFeedback: "Total Feedback",
+    noFeedback: "No feedback yet"
   }
 };

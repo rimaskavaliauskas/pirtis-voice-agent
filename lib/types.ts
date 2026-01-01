@@ -5,6 +5,8 @@
 // Core Types
 // ============================================
 
+export type InterviewMode = 'quick' | 'precise';
+
 export interface Question {
   id: string;
   text: string;
@@ -29,6 +31,38 @@ export interface RiskFlag {
   evidence: string[];
 }
 
+export interface SlotStatus {
+  slot_key: string;
+  label: string;
+  status: 'filled' | 'partial' | 'empty';
+  confidence: number;
+}
+
+export interface ContactInfo {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface FeedbackSubmission {
+  rating: number;
+  feedback_text?: string;
+}
+
+export interface FeedbackEntry {
+  id: string;
+  session_id: string;
+  rating: number;
+  feedback_text?: string;
+  created_at: string;
+}
+
+export interface FeedbackStats {
+  total_count: number;
+  average_rating: number;
+  rating_distribution: Record<number, number>;
+}
+
 // ============================================
 // Session State (matches backend AgentState)
 // ============================================
@@ -36,6 +70,7 @@ export interface RiskFlag {
 export interface AgentState {
   session_id: string;
   language: 'lt' | 'en' | 'ru';
+  interview_mode: InterviewMode;
   round: number;
   history: HistoryEntry[];
   slots: Record<string, Slot>;
@@ -47,6 +82,7 @@ export interface AgentState {
   report_markdown?: string;
   report_json?: Record<string, unknown>;
   is_complete: boolean;
+  contact_info?: ContactInfo;
 }
 
 export interface HistoryEntry {
@@ -61,10 +97,16 @@ export interface HistoryEntry {
 // ============================================
 
 // POST /session/start
+export interface StartSessionRequest {
+  language: 'lt' | 'en' | 'ru';
+  interview_mode: InterviewMode;
+}
+
 export interface StartSessionResponse {
   session_id: string;
   round: number;
   questions: Question[];
+  interview_mode: InterviewMode;
 }
 
 // POST /session/transcribe
@@ -90,9 +132,15 @@ export interface AnswerResponse {
   round_summary: string | null;
   is_complete: boolean;
   risk_flags: RiskFlag[];
+  clarification_question?: string;
+  slot_status?: SlotStatus[];
 }
 
 // POST /session/{id}/finalize
+export interface FinalizeRequest {
+  contact_info?: ContactInfo;
+}
+
 export interface FinalizeResponse {
   session_id: string;
   final_markdown: string;
@@ -160,10 +208,13 @@ export type InterviewPhase =
 export interface InterviewState {
   sessionId: string;
   phase: InterviewPhase;
+  interviewMode: InterviewMode;
   currentRound: number;
   questions: QuestionState[];
   roundSummary: string | null;
   riskFlags: RiskFlag[];
+  slotStatus: SlotStatus[];
+  clarificationQuestion: string | null;
   error: string | null;
 }
 

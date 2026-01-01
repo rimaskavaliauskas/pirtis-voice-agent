@@ -4,6 +4,11 @@ export const ru = {
     subtitle: "Ваш личный AI-архитектор для идеального банного опыта.",
     tagline: "Голосовое управление • Персонализировано • Профессионально",
     selectLanguage: "Выберите язык",
+    interviewMode: "Стиль интервью",
+    quickMode: "Быстрый",
+    quickModeDesc: "Меньше вопросов, ~5 мин",
+    preciseMode: "Точный",
+    preciseModeDesc: "Детальная консультация, ~10 мин",
     startButton: "Начать",
     initializing: "Инициализация...",
     steps: {
@@ -19,7 +24,12 @@ export const ru = {
     submitRound: "Отправить раунд {number}",
     finishInterview: "Завершить интервью",
     error: "Ошибка",
-    goHome: "На главную"
+    goHome: "На главную",
+    clarifying: "Уточним...",
+    interviewProgress: "Прогресс интервью",
+    slotFilled: "Собрано",
+    slotPartial: "Требует уточнения",
+    slotEmpty: "Ещё не собрано"
   },
   questionCard: {
     pending: "Ожидание",
@@ -66,5 +76,49 @@ export const ru = {
     captured: "Запись зафиксирована",
     tapToSpeak: "НАЖМИТЕ, ЧТОБЫ ГОВОРИТЬ",
     notSupported: "Запись аудио не поддерживается в этом браузере."
+  },
+  contact: {
+    title: "Почти готово!",
+    subtitle: "Пожалуйста, укажите ваши контактные данные",
+    name: "Имя",
+    namePlaceholder: "Ваше имя",
+    email: "Email (необязательно)",
+    emailPlaceholder: "ваш@email.com",
+    phone: "Телефон (необязательно)",
+    phonePlaceholder: "+7 999 123 4567",
+    submit: "Создать отчет",
+    skip: "Пропустить"
+  },
+  feedback: {
+    title: "Как вам опыт?",
+    ratingLabel: "Оценка",
+    recordFeedback: "Записать отзыв",
+    yourFeedback: "Ваш отзыв",
+    edit: "Редактировать",
+    submit: "Отправить",
+    submitting: "Отправка...",
+    thankYou: "Спасибо за ваш отзыв!"
+  },
+  slots: {
+    purpose: "Назначение",
+    ritual: "Ритуал",
+    infrastructure: "Инфраструктура",
+    users: "Пользователи",
+    location: "Местоположение",
+    stove_type: "Тип печи",
+    fuel_type: "Тип топлива",
+    microclimate: "Микроклимат",
+    room_program: "Программа помещений",
+    size_direction: "Размер",
+    budget: "Бюджет",
+    timeline: "Сроки"
+  },
+  admin: {
+    reportFooter: "Подвал отчета",
+    reportFooterPlaceholder: "Введите текст подвала...",
+    feedbackTab: "Отзывы",
+    averageRating: "Средняя оценка",
+    totalFeedback: "Всего отзывов",
+    noFeedback: "Пока нет отзывов"
   }
 };

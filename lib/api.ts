@@ -2,6 +2,7 @@
 // Handles all communication with the FastAPI backend on VPS
 
 import type {
+  InterviewMode,
   StartSessionResponse,
   TranscribeResponse,
   AnswerRequest,
@@ -14,6 +15,10 @@ import type {
   BrainConfigValidateResponse,
   BrainConfigImportRequest,
   BrainConfigImportResponse,
+  ContactInfo,
+  FeedbackSubmission,
+  FeedbackEntry,
+  FeedbackStats,
 } from './types';
 
 // ============================================
@@ -94,15 +99,18 @@ async function fetchWithRetry<T>(
 
 /**
  * Start a new interview session
- * Returns session_id and first 3 questions
+ * Returns session_id and first questions (3 for quick mode, 1 for precise)
  */
-export async function startSession(language: string = 'lt'): Promise<StartSessionResponse> {
+export async function startSession(
+  language: string = 'lt',
+  interviewMode: InterviewMode = 'quick'
+): Promise<StartSessionResponse> {
   return fetchWithRetry<StartSessionResponse>(`${API_BASE_URL}/session/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ language }),
+    body: JSON.stringify({ language, interview_mode: interviewMode }),
   });
 }
 
@@ -159,7 +167,8 @@ export async function submitAnswers(
  * Called after all 3 rounds are complete
  */
 export async function finalizeSession(
-  sessionId: string
+  sessionId: string,
+  contactInfo?: ContactInfo
 ): Promise<FinalizeResponse> {
   return fetchWithRetry<FinalizeResponse>(
     `${API_BASE_URL}/session/${sessionId}/finalize`,
@@ -168,6 +177,7 @@ export async function finalizeSession(
       headers: {
         'Content-Type': 'application/json',
       },
+      body: contactInfo ? JSON.stringify({ contact_info: contactInfo }) : undefined,
     }
   );
 }
@@ -192,6 +202,8 @@ export async function getSessionState(sessionId: string): Promise<{
   final_report: string | null;
   created_at: string | null;
   completed_at: string | null;
+  interview_mode?: InterviewMode;
+  slot_status?: Array<{ slot_key: string; label: string; status: 'filled' | 'partial' | 'empty'; confidence: number }>;
 }> {
   return fetchWithRetry(
     `${API_BASE_URL}/session/${sessionId}/state`,
@@ -393,4 +405,124 @@ const UUID_REGEX =
 
 export function isValidSessionId(id: string): boolean {
   return UUID_REGEX.test(id);
+}
+
+// ============================================
+// Feedback API
+// ============================================
+
+/**
+ * Submit feedback for a completed session
+ */
+export async function submitFeedback(
+  sessionId: string,
+  feedback: FeedbackSubmission
+): Promise<{ success: boolean; message: string }> {
+  return fetchWithRetry<{ success: boolean; message: string }>(
+    `${API_BASE_URL}/session/${sessionId}/feedback`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(feedback),
+    }
+  );
+}
+
+// ============================================
+// Admin: Feedback API
+// ============================================
+
+/**
+ * Get all feedback entries (admin only)
+ */
+export async function listFeedback(
+  options?: { limit?: number; offset?: number; minRating?: number }
+): Promise<FeedbackEntry[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  const params = new URLSearchParams();
+  if (options?.limit) params.append('limit', String(options.limit));
+  if (options?.offset) params.append('offset', String(options.offset));
+  if (options?.minRating) params.append('min_rating', String(options.minRating));
+
+  const queryString = params.toString();
+  const url = `${API_BASE_URL}/brain/config/feedback${queryString ? `?${queryString}` : ''}`;
+
+  return fetchWithRetry<FeedbackEntry[]>(url, {
+    method: 'GET',
+    headers: {
+      [ADMIN_KEY_HEADER]: adminKey,
+    },
+  });
+}
+
+/**
+ * Get feedback statistics (admin only)
+ */
+export async function getFeedbackStats(): Promise<FeedbackStats> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<FeedbackStats>(
+    `${API_BASE_URL}/brain/config/feedback/stats`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+// ============================================
+// Admin: Report Footer API
+// ============================================
+
+/**
+ * Get the current report footer text (admin only)
+ */
+export async function getReportFooter(): Promise<{ report_footer: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ report_footer: string }>(
+    `${API_BASE_URL}/brain/config/config/report-footer`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Update the report footer text (admin only)
+ */
+export async function setReportFooter(
+  footerText: string
+): Promise<{ success: boolean; report_footer: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ success: boolean; report_footer: string }>(
+    `${API_BASE_URL}/brain/config/config/report-footer?footer_text=${encodeURIComponent(footerText)}`,
+    {
+      method: 'PUT',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
 }

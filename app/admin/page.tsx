@@ -19,14 +19,20 @@ import {
   importBrainConfig,
   setAdminKey,
   clearAdminKey,
+  getReportFooter,
+  setReportFooter,
+  listFeedback,
+  getFeedbackStats,
 } from '@/lib/api';
 import { toast } from 'sonner';
+import type { FeedbackEntry, FeedbackStats } from '@/lib/types';
 
 // ============================================
 // Types
 // ============================================
 
 type AdminState = 'not_authenticated' | 'authenticated' | 'loading';
+type AdminTab = 'config' | 'feedback';
 
 // ============================================
 // Component
@@ -42,6 +48,18 @@ export default function AdminPage() {
   const [yamlContent, setYamlContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<AdminTab>('config');
+
+  // Footer state
+  const [footerText, setFooterText] = useState('');
+  const [footerLoading, setFooterLoading] = useState(false);
+
+  // Feedback state
+  const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // Check if already authenticated
   useEffect(() => {
@@ -266,6 +284,62 @@ risk_rules:
     toast.success('Configuration downloaded');
   }, [yamlContent]);
 
+  // Load footer text
+  const loadFooter = useCallback(async () => {
+    setFooterLoading(true);
+    try {
+      const response = await getReportFooter();
+      setFooterText(response.report_footer || '');
+    } catch (error) {
+      console.error('Failed to load footer:', error);
+    } finally {
+      setFooterLoading(false);
+    }
+  }, []);
+
+  // Save footer text
+  const handleSaveFooter = useCallback(async () => {
+    setFooterLoading(true);
+    try {
+      await setReportFooter(footerText);
+      toast.success('Report footer saved');
+    } catch (error) {
+      console.error('Failed to save footer:', error);
+      toast.error('Failed to save footer');
+    } finally {
+      setFooterLoading(false);
+    }
+  }, [footerText]);
+
+  // Load feedback data
+  const loadFeedback = useCallback(async () => {
+    setFeedbackLoading(true);
+    try {
+      const [entries, stats] = await Promise.all([
+        listFeedback({ limit: 50 }),
+        getFeedbackStats(),
+      ]);
+      setFeedbackList(entries);
+      setFeedbackStats(stats);
+    } catch (error) {
+      console.error('Failed to load feedback:', error);
+      toast.error('Failed to load feedback data');
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, []);
+
+  // Load data when tab changes
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    if (activeTab === 'config') {
+      loadFooter();
+    } else if (activeTab === 'feedback') {
+      loadFeedback();
+    }
+  }, [activeTab, authState, loadFooter, loadFeedback]);
+
   // Auth dialog
   if (authState === 'loading') {
     return (
@@ -311,9 +385,9 @@ risk_rules:
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Brain Configuration</h1>
+              <h1 className="text-2xl font-bold">Admin Panel</h1>
               <p className="text-muted-foreground">
-                Edit and manage the agent&apos;s question bank, slots, and rules
+                Manage brain configuration, report settings, and feedback
               </p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
@@ -321,7 +395,73 @@ risk_rules:
             </Button>
           </div>
 
-          {/* Action Buttons */}
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-white/10 pb-2">
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`px-4 py-2 rounded-t-lg transition-colors ${
+                activeTab === 'config'
+                  ? 'bg-primary/20 text-primary border-b-2 border-primary'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ConfigIcon className="w-4 h-4 inline mr-2" />
+              Configuration
+            </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`px-4 py-2 rounded-t-lg transition-colors ${
+                activeTab === 'feedback'
+                  ? 'bg-primary/20 text-primary border-b-2 border-primary'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <FeedbackIcon className="w-4 h-4 inline mr-2" />
+              Feedback
+              {feedbackStats && feedbackStats.total_count > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                  {feedbackStats.total_count}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Config Tab Content */}
+          {activeTab === 'config' && (
+            <>
+              {/* Report Footer */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Report Footer</CardTitle>
+                  <CardDescription>
+                    Text that appears at the bottom of every generated report
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={footerText}
+                    onChange={(e) => setFooterText(e.target.value)}
+                    placeholder="© Your Company | www.example.com | +370 600 00000"
+                    className="font-mono text-sm min-h-[100px] resize-y"
+                    disabled={footerLoading}
+                  />
+                  <Button onClick={handleSaveFooter} disabled={footerLoading}>
+                    {footerLoading ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <SaveIcon className="w-4 h-4 mr-2" />
+                        Save Footer
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-wrap gap-3">
@@ -403,6 +543,120 @@ risk_rules:
               </p>
             </CardContent>
           </Card>
+            </>
+          )}
+
+          {/* Feedback Tab Content */}
+          {activeTab === 'feedback' && (
+            <>
+              {/* Stats Summary */}
+              {feedbackStats && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Feedback Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                        <div className="text-3xl font-bold text-primary">
+                          {feedbackStats.total_count}
+                        </div>
+                        <div className="text-sm text-gray-400">Total Responses</div>
+                      </div>
+                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                        <div className="text-3xl font-bold text-amber-400 flex items-center justify-center gap-1">
+                          {feedbackStats.average_rating.toFixed(1)}
+                          <StarIcon className="w-6 h-6" filled />
+                        </div>
+                        <div className="text-sm text-gray-400">Average Rating</div>
+                      </div>
+                      <div className="col-span-2 p-4 bg-white/5 rounded-lg">
+                        <div className="text-sm text-gray-400 mb-2">Rating Distribution</div>
+                        <div className="flex items-end gap-1 h-12">
+                          {[1, 2, 3, 4, 5].map((star) => {
+                            const count = feedbackStats.rating_distribution[star] || 0;
+                            const maxCount = Math.max(...Object.values(feedbackStats.rating_distribution), 1);
+                            const height = (count / maxCount) * 100;
+                            return (
+                              <div key={star} className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                  className="w-full bg-amber-400/60 rounded-t"
+                                  style={{ height: `${Math.max(height, 4)}%` }}
+                                />
+                                <span className="text-xs text-gray-500">{star}★</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Feedback List */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Feedback</CardTitle>
+                    <CardDescription>
+                      User feedback from completed interviews
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadFeedback} disabled={feedbackLoading}>
+                    {feedbackLoading ? (
+                      <LoadingSpinner className="w-4 h-4" />
+                    ) : (
+                      'Refresh'
+                    )}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {feedbackLoading ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner className="w-8 h-8" />
+                    </div>
+                  ) : feedbackList.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      No feedback yet
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {feedbackList.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="p-4 bg-white/5 rounded-lg border border-white/10"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <StarIcon
+                                  key={star}
+                                  className="w-4 h-4"
+                                  filled={star <= entry.rating}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          {entry.feedback_text && (
+                            <p className="text-sm text-gray-300 mt-2">
+                              &ldquo;{entry.feedback_text}&rdquo;
+                            </p>
+                          )}
+                          <div className="text-xs text-gray-500 mt-2">
+                            Session: {entry.session_id.slice(0, 8)}...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       )}
     </main>
@@ -472,6 +726,43 @@ function SaveIcon({ className }: { className?: string }) {
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <polyline points="17 21 17 13 7 13 7 21" />
       <polyline points="7 3 7 8 15 8" />
+    </svg>
+  );
+}
+
+function ConfigIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function FeedbackIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M8 10h.01" />
+      <path d="M12 10h.01" />
+      <path d="M16 10h.01" />
+    </svg>
+  );
+}
+
+function StarIcon({ className, filled }: { className?: string; filled: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-colors ${filled ? 'text-amber-400' : 'text-gray-600'}`}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
 }
