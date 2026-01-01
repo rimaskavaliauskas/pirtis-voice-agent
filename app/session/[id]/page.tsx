@@ -10,7 +10,7 @@ import { QuestionCard } from '@/components/question-card';
 import { RoundIndicator } from '@/components/round-indicator';
 import { ProcessingOverlay } from '@/components/processing-overlay';
 import { SessionSkeleton } from '@/components/session-skeleton';
-import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState } from '@/lib/api';
+import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState, translateText } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
 import type { Question, QuestionState, RecordingState, RiskFlag } from '@/lib/types';
@@ -36,6 +36,9 @@ interface InterviewState {
   error: string | null;
 }
 
+// Cache for translated texts
+const translationCache = new Map<string, string>();
+
 // ============================================
 // Initial State
 // ============================================
@@ -58,7 +61,11 @@ export default function InterviewPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+
+  // State for translated question texts (key: original text, value: translated)
+  const [translatedTexts, setTranslatedTexts] = useState<Map<string, string>>(new Map());
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [state, setState] = useState<InterviewState>({
     phase: 'loading',
@@ -132,6 +139,88 @@ export default function InterviewPage() {
 
     fetchSession();
   }, [sessionId, router]);
+
+  // Translate questions when language changes or questions load
+  useEffect(() => {
+    const translateQuestions = async () => {
+      if (language === 'lt' || state.questions.length === 0) {
+        setTranslatedTexts(new Map());
+        return;
+      }
+
+      // Collect texts that need translation
+      const textsToTranslate: string[] = [];
+      state.questions.forEach(q => {
+        const cacheKey = `${language}:${q.question.text}`;
+        if (!translationCache.has(cacheKey)) {
+          textsToTranslate.push(q.question.text);
+        }
+      });
+      if (state.roundSummary) {
+        const cacheKey = `${language}:${state.roundSummary}`;
+        if (!translationCache.has(cacheKey)) {
+          textsToTranslate.push(state.roundSummary);
+        }
+      }
+
+      if (textsToTranslate.length === 0) {
+        // All already cached, just update state from cache
+        const newTranslated = new Map<string, string>();
+        state.questions.forEach(q => {
+          const cacheKey = `${language}:${q.question.text}`;
+          if (translationCache.has(cacheKey)) {
+            newTranslated.set(q.question.text, translationCache.get(cacheKey)!);
+          }
+        });
+        if (state.roundSummary) {
+          const cacheKey = `${language}:${state.roundSummary}`;
+          if (translationCache.has(cacheKey)) {
+            newTranslated.set(state.roundSummary, translationCache.get(cacheKey)!);
+          }
+        }
+        setTranslatedTexts(newTranslated);
+        return;
+      }
+
+      setIsTranslating(true);
+      const newTranslated = new Map<string, string>();
+
+      // Translate all texts
+      await Promise.all(
+        textsToTranslate.map(async (text) => {
+          const translated = await translateText(text, language as 'en' | 'ru');
+          const cacheKey = `${language}:${text}`;
+          translationCache.set(cacheKey, translated);
+          newTranslated.set(text, translated);
+        })
+      );
+
+      // Add cached translations
+      state.questions.forEach(q => {
+        const cacheKey = `${language}:${q.question.text}`;
+        if (translationCache.has(cacheKey) && !newTranslated.has(q.question.text)) {
+          newTranslated.set(q.question.text, translationCache.get(cacheKey)!);
+        }
+      });
+      if (state.roundSummary) {
+        const cacheKey = `${language}:${state.roundSummary}`;
+        if (translationCache.has(cacheKey) && !newTranslated.has(state.roundSummary)) {
+          newTranslated.set(state.roundSummary, translationCache.get(cacheKey)!);
+        }
+      }
+
+      setTranslatedTexts(newTranslated);
+      setIsTranslating(false);
+    };
+
+    translateQuestions();
+  }, [language, state.questions, state.roundSummary]);
+
+  // Helper to get displayed text (translated or original)
+  const getDisplayText = useCallback((originalText: string): string => {
+    if (language === 'lt') return originalText;
+    return translatedTexts.get(originalText) || originalText;
+  }, [language, translatedTexts]);
 
   // Get current question
   const currentQuestion = state.questions[state.activeQuestionIndex];
@@ -316,7 +405,10 @@ export default function InterviewPage() {
             <CardContent className="pt-4">
               <p className="text-sm text-gray-300">
                 <span className="font-medium text-primary">{t('session.roundSummary')} </span>
-                {state.roundSummary}
+                {getDisplayText(state.roundSummary)}
+                {isTranslating && language !== 'lt' && (
+                  <span className="ml-1 animate-pulse">...</span>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -332,9 +424,10 @@ export default function InterviewPage() {
             >
               <QuestionCard
                 questionNumber={index + 1}
-                questionText={q.question.text}
+                questionText={getDisplayText(q.question.text)}
                 status={q.isConfirmed ? 'confirmed' : q.recordingState}
                 isActive={index === state.activeQuestionIndex}
+                isTranslating={isTranslating && language !== 'lt'}
               />
             </div>
           ))}
@@ -349,7 +442,10 @@ export default function InterviewPage() {
                   {t('session.question', { number: state.activeQuestionIndex + 1 })}
                 </p>
                 <p className="text-2xl font-light leading-relaxed text-white">
-                  {currentQuestion.question.text}
+                  {getDisplayText(currentQuestion.question.text)}
+                  {isTranslating && language !== 'lt' && (
+                    <span className="ml-2 text-sm text-muted-foreground animate-pulse">...</span>
+                  )}
                 </p>
               </div>
 
@@ -371,7 +467,7 @@ export default function InterviewPage() {
               {currentQuestion.recordingState === 'done' && currentQuestion.transcript && (
                 <TranscriptPreview
                   transcript={currentQuestion.transcript}
-                  questionText={currentQuestion.question.text}
+                  questionText={getDisplayText(currentQuestion.question.text)}
                   onConfirm={handleConfirmTranscript}
                   onRetry={handleRetryRecording}
                   className="mx-auto max-w-lg"

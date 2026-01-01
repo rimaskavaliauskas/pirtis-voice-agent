@@ -13,6 +13,7 @@ interface QuestionCardProps {
   questionText: string;
   status: RecordingState | 'confirmed';
   isActive?: boolean;
+  isTranslating?: boolean;
   className?: string;
 }
 
@@ -76,6 +77,7 @@ export function QuestionCard({
   questionText,
   status,
   isActive = false,
+  isTranslating = false,
   className = '',
 }: QuestionCardProps) {
   const { t } = useTranslation();
@@ -122,6 +124,7 @@ export function QuestionCard({
       <CardContent className="pt-4">
         <p className={`text-lg leading-relaxed ${isActive ? 'text-white' : 'text-gray-400'}`}>
           {questionText}
+          {isTranslating && <span className="ml-1 animate-pulse">...</span>}
         </p>
       </CardContent>
     </Card>

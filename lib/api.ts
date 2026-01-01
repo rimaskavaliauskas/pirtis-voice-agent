@@ -238,6 +238,32 @@ export async function downloadReport(sessionId: string): Promise<Blob> {
 }
 
 /**
+ * Translate any text to target language
+ * Used for translating dynamic content (questions, summaries) from Lithuanian
+ */
+export async function translateText(
+  text: string,
+  targetLanguage: 'en' | 'ru'
+): Promise<string> {
+  try {
+    const response = await fetchWithRetry<{ translated_text: string }>(
+      `${API_BASE_URL}/translate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target_language: targetLanguage }),
+      },
+      1 // Only 1 attempt for translation
+    );
+    return response.translated_text;
+  } catch {
+    // If translation fails, return original text
+    console.warn('Translation failed, using original text');
+    return text;
+  }
+}
+
+/**
  * Translate the report to target language
  */
 export async function translateReport(
