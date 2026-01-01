@@ -117,6 +117,10 @@ journalctl -u agent-brain -f
 - **Admin key**: Stored in localStorage on frontend
 - **CORS**: Allows Vercel frontend + localhost:3000
 
+## Documentation
+
+- **Admin Guide**: See `docs/admin-guide.md` for detailed explanation of brain configuration (slots, questions, risk rules, scoring)
+
 ## Gotchas
 
 - **API URL fallback**: Use `/api/backend` (not `localhost:8000`) as fallback in `lib/api.ts` - `.env.local` isn't deployed to Vercel
