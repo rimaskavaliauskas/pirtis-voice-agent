@@ -364,6 +364,181 @@ condition:
 # True if budget < 10000 AND (size = "large" OR users > 6)
 ```
 
+### Currently Configured Risk Rules
+
+The system has **5 risk rules** preconfigured:
+
+#### 1. RISK_SOFT_STEAM_CONFLICT (Medium Severity)
+
+**Problem:** Customer wants soft steam but chose continuous/electric stove (wrong combination).
+
+**Triggers when:**
+- `ritual` contains: "minkštas garas", "soft steam", "lengvas garas"
+- AND `stove_type` contains: "nuolatinio kūrenimo", "continuous", "elektrinė"
+
+**Warning:**
+> Minkštas garas geriau gaunamas su periodinio (akumuliacinio) kūrenimo krosnimis. Nuolatinio kūrenimo krosnys duoda kitokį garą.
+
+```yaml
+- id: RISK_SOFT_STEAM_CONFLICT
+  code: RISK_SOFT_STEAM_CONFLICT
+  severity: medium
+  rule_json:
+    all:
+    - slot: ritual
+      contains_any:
+      - minkštas garas
+      - soft steam
+      - lengvas garas
+    - slot: stove_type
+      contains_any:
+      - nuolatinio kūrenimo
+      - continuous
+      - elektrinė
+```
+
+---
+
+#### 2. RISK_RENTAL_NO_INFRASTRUCTURE (High Severity)
+
+**Problem:** Rental/business sauna without proper sewage system (sanitary violation risk).
+
+**Triggers when:**
+- `purpose` contains: "nuoma", "rental", "verslas", "business"
+- AND `infrastructure` does NOT contain: "nuotekos", "sewage", "kanalizacija"
+
+**Warning:**
+> Nuomai skirta pirtis be nuotekų sistemos gali sukelti problemų su sanitariniais reikalavimais.
+
+```yaml
+- id: RISK_RENTAL_NO_INFRASTRUCTURE
+  code: RISK_RENTAL_NO_INFRASTRUCTURE
+  severity: high
+  rule_json:
+    all:
+    - slot: purpose
+      contains_any:
+      - nuoma
+      - rental
+      - verslas
+      - business
+    - slot: infrastructure
+      not_contains_any:
+      - nuotekos
+      - sewage
+      - kanalizacija
+```
+
+---
+
+#### 3. RISK_WINTER_NO_WATER (Medium Severity)
+
+**Problem:** Year-round/winter use without reliable water supply.
+
+**Triggers when:**
+- `users` contains: "žiema", "winter", "visus metus", "year-round"
+- AND `infrastructure` does NOT contain: "vandentiekis", "water supply", "šulinys", "well"
+
+**Warning:**
+> Žiemą naudojama pirtis reikalauja patikimo vandens šaltinio, kuris neužšąla.
+
+```yaml
+- id: RISK_WINTER_NO_WATER
+  code: RISK_WINTER_NO_WATER
+  severity: medium
+  rule_json:
+    all:
+    - slot: users
+      contains_any:
+      - žiema
+      - winter
+      - visus metus
+      - year-round
+    - slot: infrastructure
+      not_contains_any:
+      - vandentiekis
+      - water supply
+      - šulinys
+      - well
+```
+
+---
+
+#### 4. RISK_CAPACITY_VENTILATION (Low Severity)
+
+**Problem:** Large group usage without mentioning ventilation.
+
+**Triggers when:**
+- `users` contains: "daug", "many", "grupė", "group", "10+", "didelis"
+- AND `room_program` does NOT contain: "ventiliacija", "ventilation", "oro"
+
+**Warning:**
+> Didelei grupei žmonių būtina tinkamai suprojektuota ventiliacija.
+
+```yaml
+- id: RISK_CAPACITY_VENTILATION
+  code: RISK_CAPACITY_VENTILATION
+  severity: low
+  rule_json:
+    all:
+    - slot: users
+      contains_any:
+      - daug
+      - many
+      - grupė
+      - group
+      - 10+
+      - didelis
+    - slot: room_program
+      not_contains_any:
+      - ventiliacija
+      - ventilation
+      - oro
+```
+
+---
+
+#### 5. RISK_ELECTRIC_LARGE_SPACE (Medium Severity)
+
+**Problem:** Electric stove may be insufficient for large sauna space.
+
+**Triggers when:**
+- `stove_type` contains: "elektrinė", "electric"
+- AND `size_direction` contains: "didelė", "large", "erdvi", "spacious"
+
+**Warning:**
+> Elektrinė krosnis gali būti nepakankama didelei pirties erdvei. Svarstykite alternatyvas.
+
+```yaml
+- id: RISK_ELECTRIC_LARGE_SPACE
+  code: RISK_ELECTRIC_LARGE_SPACE
+  severity: medium
+  rule_json:
+    all:
+    - slot: stove_type
+      contains_any:
+      - elektrinė
+      - electric
+    - slot: size_direction
+      contains_any:
+      - didelė
+      - large
+      - erdvi
+      - spacious
+```
+
+---
+
+#### Risk Rules Summary Table
+
+| Code | Severity | Detects |
+|------|----------|---------|
+| `RISK_SOFT_STEAM_CONFLICT` | Medium | Wrong stove type for soft steam ritual |
+| `RISK_RENTAL_NO_INFRASTRUCTURE` | **High** | Rental business without sewage |
+| `RISK_WINTER_NO_WATER` | Medium | Winter use without water supply |
+| `RISK_CAPACITY_VENTILATION` | Low | Large groups without ventilation |
+| `RISK_ELECTRIC_LARGE_SPACE` | Medium | Electric stove for large space |
+
 ---
 
 ## YAML Configuration Reference
