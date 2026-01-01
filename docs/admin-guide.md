@@ -190,6 +190,79 @@ TOTAL SCORE:              12.3
 
 The system calculates this for **all questions** and picks the **top 3 by score**.
 
+### Currently Configured Questions (23 total)
+
+The system has **23 questions** preconfigured across 3 rounds plus clarification questions:
+
+#### Round 1 Questions (Basic Information)
+
+| ID | Priority | Question (LT) | Covers Slots |
+|----|----------|---------------|--------------|
+| `Q_R1_PURPOSE` | 100 | Kokia būtų pagrindinė jūsų pirties paskirtis? Ar tai bus asmeniniam naudojimui, svečiams, ar galbūt nuomai? | `purpose` |
+| `Q_R1_USERS` | 95 | Kas dažniausiai naudosis pirtimi? Kiek žmonių vienu metu planuojate priimti? | `users` |
+| `Q_R1_RITUAL` | 90 | Kokį pirties ritualą labiausiai mėgstate? Gal minkšto garo, gal tradicinį su vantomis? | `ritual` |
+| `Q_R1_LOCATION_BASIC` | 85 | Kur planuojate statyti pirtį? Ar tai bus mieste, kaime, prie vandens telkinio? | `location` |
+| `Q_R1_EXPERIENCE` | 80 | Papasakokite apie savo pirties patirtį - kokiose pirtyse lankėtės ir kas jums patiko labiausiai? | `ritual`, `purpose` |
+
+#### Round 2 Questions (Technical Details)
+
+| ID | Priority | Question (LT) | Covers Slots |
+|----|----------|---------------|--------------|
+| `Q_R2_INFRASTRUCTURE` | 95 | Kokia infrastruktūra yra sklype? Ar yra vandentiekis, elektra, nuotekos? | `infrastructure` |
+| `Q_R2_STOVE_PREFERENCE` | 90 | Ar turite pageidavimų dėl krosnies tipo? Malkinė ar elektrinė? Periodinio ar nuolatinio kūrenimo? | `stove_type`, `fuel_type` |
+| `Q_R2_TEMPERATURE` | 85 | Kokią temperatūrą ir drėgmę pirtyje mėgstate? Ar mėgstate karštesnę pirtį, ar švelnesnius 60-70 laipsnių? | `microclimate` |
+| `Q_R2_ROOMS` | 85 | Kokias patalpas norėtumėte turėti šalia garinės? Poilsio zona, dušai, baseinėlis? | `room_program` |
+| `Q_R2_SIZE` | 80 | Koks apytikris pirties dydis jums atrodo tinkamas? Kompaktiška, vidutinė, ar erdvi pirtis? | `size_direction` |
+| `Q_R2_SEASONS` | 75 | Ar planuojate naudotis pirtimi visus metus, ar tik tam tikru sezonu? | `infrastructure` |
+| `Q_R2_WATER_PROCEDURES` | 75 | Ar svarbu turėti galimybę atsigaivinti vandeniu po pirties - dušas, kubilą? | `room_program`, `infrastructure` |
+
+#### Round 3 Questions (Finalization)
+
+| ID | Priority | Question (LT) | Covers Slots |
+|----|----------|---------------|--------------|
+| `Q_R3_BUDGET` | 90 | Kokį biudžetą esate numatę pirties projektui ir statyboms? | `budget` |
+| `Q_R3_TIMELINE` | 85 | Kokie jūsų terminai? Kada norėtumėte turėti veikiančią pirtį? | `timeline` |
+| `Q_R3_SPECIAL_NEEDS` | 80 | Ar yra kokių nors specialių poreikių ar apribojimų, apie kuriuos turėtume žinoti? | — |
+| `Q_R3_MATERIALS` | 80 | Ar turite pageidavimų dėl medžiagų? Gal tam tikros medienos rūšys? | `microclimate` |
+| `Q_R3_DESIGN_STYLE` | 75 | Ar turite vizijos apie pirties išvaizdą ir stilių? Tradicinis, modernus, skandinaviškas? | — |
+| `Q_R3_ACCESSIBILITY` | 75 | Ar reikia atsižvelgti į prieinamumo reikalavimus - vyresnio amžiaus žmonėms ar žmonėms su negalia? | `users` |
+
+#### Clarification Questions (No Fixed Round)
+
+These are asked dynamically when a risk is detected:
+
+| ID | Priority | Triggers For Risk | Question (LT) |
+|----|----------|-------------------|---------------|
+| `Q_CLARIFY_INFRASTRUCTURE_RENTAL` | 85 | `RISK_RENTAL_NO_INFRASTRUCTURE` | Kadangi planuojate nuomą, kaip ketinate spręsti nuotekų klausimą? |
+| `Q_CLARIFY_WINTER_WATER` | 80 | `RISK_WINTER_NO_WATER` | Jei planuojate naudotis žiemą, kaip užtikrinsite vandens tiekimą šaltuoju metų laiku? |
+| `Q_CLARIFY_ELECTRIC_SIZE` | 75 | `RISK_ELECTRIC_LARGE_SPACE` | Elektrinė krosnis gali būti ribota didelei erdvei. Ar svarstytumėte malkinę krosnį? |
+| `Q_CLARIFY_STOVE_TYPE` | 70 | `RISK_SOFT_STEAM_CONFLICT` | Norint gauti minkštą garą, geriausia naudoti akumuliacinę krosnį. Ar tai jums priimtina? |
+| `Q_CLARIFY_VENTILATION` | 70 | `RISK_CAPACITY_VENTILATION` | Didelei grupei žmonių svarbi gera ventiliacija. Ar esate galvoję apie oro cirkuliaciją? |
+
+#### Question YAML Format
+
+```yaml
+questions:
+- id: Q_R1_PURPOSE
+  text_lt: Kokia būtų pagrindinė jūsų pirties paskirtis? Ar tai bus asmeniniam naudojimui, svečiams, ar galbūt nuomai?
+  text_en: What would be the main purpose of your sauna? Personal use, guests, or rental?
+  base_priority: 100
+  round_hint: 1
+  slot_coverage:
+  - purpose
+  risk_coverage: []
+
+- id: Q_CLARIFY_INFRASTRUCTURE_RENTAL
+  text_lt: Kadangi planuojate nuomą, kaip ketinate spręsti nuotekų klausimą?
+  text_en: Since you plan rental, how will you handle sewage?
+  base_priority: 85
+  round_hint: null    # No fixed round - asked when risk detected
+  slot_coverage:
+  - infrastructure
+  risk_coverage:
+  - RISK_RENTAL_NO_INFRASTRUCTURE
+```
+
 ---
 
 ## Understanding Slots
@@ -223,17 +296,54 @@ When the AI extracts information from user answers, it stores:
 - **value** - The extracted value (number, string, or list)
 - **confidence** - How sure the AI is (0.0 to 1.0)
 
-### Common Slot Types
+### Currently Configured Slots (12 total)
 
-| Slot Name | Description | Typical Values |
-|-----------|-------------|----------------|
-| `sauna_purpose` | Why they want a sauna | "relaxation", "health", "entertainment" |
-| `budget` | Budget in euros | 5000, 15000, 30000 |
-| `user_count` | Number of users | 2, 4, 6 |
-| `sauna_size` | Size category | "small", "medium", "large" |
-| `heating_type` | Type of heater | "electric", "wood", "gas" |
-| `location` | Installation location | "indoor", "outdoor", "garden" |
-| `special_features` | Desired features | ["LED lights", "audio system"] |
+The system has **12 slots** preconfigured:
+
+#### Required Slots (4)
+
+These must be filled to generate a complete report:
+
+| Slot Key | Label (LT) | Label (EN) | Description |
+|----------|------------|------------|-------------|
+| `purpose` | Pirties paskirtis | Sauna purpose | Main purpose: relaxation, health, social, business |
+| `ritual` | Pirties ritualas | Sauna ritual | Preferred ritual: soft steam, traditional, with venik |
+| `infrastructure` | Infrastruktūra | Infrastructure | Available: water, electricity, sewage |
+| `users` | Naudotojai | Users | Who will use: family, friends, clients |
+
+#### Optional Slots (8)
+
+These provide additional detail but aren't required:
+
+| Slot Key | Label (LT) | Label (EN) | Description |
+|----------|------------|------------|-------------|
+| `location` | Vieta | Location | Where: urban, rural, by water |
+| `stove_type` | Krosnies tipas | Stove type | Periodic/mass or continuous heating |
+| `fuel_type` | Kuras | Fuel type | Wood, electric, or gas |
+| `microclimate` | Mikroklimatas | Microclimate | Preferred temperature/humidity (60-80°C typical) |
+| `room_program` | Patalpų programa | Room program | Required rooms: steam, rest area, shower, pool |
+| `size_direction` | Dydžio kryptis | Size direction | Compact, medium, or large |
+| `budget` | Biudžetas | Budget | Budget range or constraints |
+| `timeline` | Terminai | Timeline | Expected construction timeline |
+
+#### Slot YAML Format
+
+```yaml
+slots:
+- key: purpose
+  label_lt: Pirties paskirtis
+  label_en: Sauna purpose
+  description: What is the main purpose of the sauna (relaxation, health, social, business)
+  is_required: true
+  priority_weight: 1.2
+
+- key: budget
+  label_lt: Biudžetas
+  label_en: Budget
+  description: Budget range or constraints
+  is_required: false
+  priority_weight: 0.7
+```
 
 ---
 
