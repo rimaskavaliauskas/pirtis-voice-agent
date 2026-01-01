@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ReportPreview } from '@/components/report-preview';
 import { getResults, downloadReport, translateReport, isValidSessionId } from '@/lib/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/translations';
 
 // ============================================
 // Types
@@ -22,6 +23,7 @@ export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  const { t } = useTranslation();
 
   const [state, setState] = useState<PageState>('loading');
   const [markdown, setMarkdown] = useState<string>('');
@@ -153,7 +155,7 @@ export default function ResultsPage() {
       <main className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <LoadingSpinner className="w-10 h-10 mx-auto" />
-          <p className="text-muted-foreground">Loading your report...</p>
+          <p className="text-muted-foreground">{t('results.loading')}</p>
         </div>
       </main>
     );
@@ -166,9 +168,9 @@ export default function ResultsPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <ErrorIcon className="w-12 h-12 mx-auto text-destructive" />
-            <h2 className="text-xl font-semibold">Error</h2>
+            <h2 className="text-xl font-semibold">{t('session.error')}</h2>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={() => router.push('/')}>Go Home</Button>
+            <Button onClick={() => router.push('/')}>{t('session.goHome')}</Button>
           </CardContent>
         </Card>
       </main>
@@ -181,9 +183,9 @@ export default function ResultsPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <SuccessIcon className="w-16 h-16 mx-auto text-green-500" />
-          <h1 className="text-2xl font-bold">Interview Complete!</h1>
+          <h1 className="text-2xl font-bold">{t('results.complete')}</h1>
           <p className="text-muted-foreground">
-            Your personalized sauna design report is ready
+            {t('results.reportReady')}
           </p>
         </div>
 
@@ -193,7 +195,7 @@ export default function ResultsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <TranslateIcon className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium text-gray-300">Translate report:</span>
+                <span className="text-sm font-medium text-gray-300">{t('results.translateLabel')}</span>
                 <div className="flex gap-2">
                   {[
                     { code: 'en', label: 'English', flag: 'EN' },
@@ -227,12 +229,12 @@ export default function ResultsPage() {
                   {isTranslating ? (
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
-                      Translating...
+                      {t('results.translating')}
                     </>
                   ) : showTranslation ? (
-                    'Show Original'
+                    t('results.showOriginal')
                   ) : (
-                    'Show Translation'
+                    t('results.showTranslation')
                   )}
                 </Button>
                 <Button
@@ -243,7 +245,7 @@ export default function ResultsPage() {
                   className="border-white/10 hover:bg-white/5 text-gray-300"
                 >
                   <DownloadIcon className="w-4 h-4 mr-2" />
-                  Download Translation
+                  {t('results.downloadTranslation')}
                 </Button>
               </div>
             </div>
@@ -265,7 +267,7 @@ export default function ResultsPage() {
 
         {/* Session Info */}
         <p className="text-center text-sm text-muted-foreground">
-          Session ID: {sessionId.slice(0, 8)}...
+          {t('results.sessionId', { id: sessionId.slice(0, 8) + '...' })}
         </p>
       </div>
     </main>

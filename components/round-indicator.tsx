@@ -1,6 +1,7 @@
 'use client';
 
 import { Progress } from '@/components/ui/progress';
+import { useTranslation } from '@/lib/translations';
 
 interface RoundIndicatorProps {
   currentRound: number;
@@ -17,6 +18,7 @@ export function RoundIndicator({
   totalQuestions = 3,
   className = '',
 }: RoundIndicatorProps) {
+  const { t } = useTranslation();
   const completedRounds = currentRound - 1;
   const questionsPerRound = totalQuestions;
   const totalQuestionsOverall = totalRounds * questionsPerRound;
@@ -47,7 +49,7 @@ export function RoundIndicator({
               ) : (
                 <span className={`w-4 text-center font-bold ${isCurrent ? 'bg-primary-foreground/20 rounded-full' : ''}`}>{roundNum}</span>
               )}
-              <span className="uppercase tracking-wider text-xs">Round {roundNum}</span>
+              <span className="uppercase tracking-wider text-xs">{t('round.label', { number: roundNum })}</span>
             </div>
           );
         })}
@@ -61,8 +63,8 @@ export function RoundIndicator({
           />
         </div>
         <div className="flex justify-between text-xs font-mono text-gray-500 uppercase tracking-widest">
-          <span>Question {questionsAnswered}/{totalQuestions}</span>
-          <span>{Math.round(progressPercent)}% DONE</span>
+          <span>{t('round.progress', { answered: questionsAnswered, total: totalQuestions })}</span>
+          <span>{Math.round(progressPercent)}{t('round.done')}</span>
         </div>
       </div>
     </div>

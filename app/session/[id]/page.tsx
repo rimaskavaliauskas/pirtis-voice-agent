@@ -12,6 +12,7 @@ import { ProcessingOverlay } from '@/components/processing-overlay';
 import { SessionSkeleton } from '@/components/session-skeleton';
 import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState } from '@/lib/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/translations';
 import type { Question, QuestionState, RecordingState, RiskFlag } from '@/lib/types';
 
 // ============================================
@@ -57,6 +58,7 @@ export default function InterviewPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  const { t } = useTranslation();
 
   const [state, setState] = useState<InterviewState>({
     phase: 'loading',
@@ -275,9 +277,9 @@ export default function InterviewPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <ErrorIcon className="w-12 h-12 mx-auto text-destructive" />
-            <h2 className="text-xl font-semibold">Error</h2>
+            <h2 className="text-xl font-semibold">{t('session.error')}</h2>
             <p className="text-muted-foreground">{state.error}</p>
-            <Button onClick={() => router.push('/')}>Go Home</Button>
+            <Button onClick={() => router.push('/')}>{t('session.goHome')}</Button>
           </CardContent>
         </Card>
       </main>
@@ -301,7 +303,7 @@ export default function InterviewPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Pirtis Design Interview</h1>
+          <h1 className="text-2xl font-bold">{t('session.title')}</h1>
           <RoundIndicator
             currentRound={state.currentRound}
             questionsAnswered={confirmedCount}
@@ -313,7 +315,7 @@ export default function InterviewPage() {
           <Card className="glass-panel border-white/5">
             <CardContent className="pt-4">
               <p className="text-sm text-gray-300">
-                <span className="font-medium text-primary">Previous round summary: </span>
+                <span className="font-medium text-primary">{t('session.roundSummary')} </span>
                 {state.roundSummary}
               </p>
             </CardContent>
@@ -344,7 +346,7 @@ export default function InterviewPage() {
             <div className="space-y-8">
               <div className="text-center space-y-2">
                 <p className="text-lg font-medium text-primary">
-                  Question {state.activeQuestionIndex + 1}
+                  {t('session.question', { number: state.activeQuestionIndex + 1 })}
                 </p>
                 <p className="text-2xl font-light leading-relaxed text-white">
                   {currentQuestion.question.text}
@@ -387,7 +389,7 @@ export default function InterviewPage() {
               onClick={handleSubmitRound}
               className="px-8"
             >
-              {state.currentRound === 3 ? 'Finish Interview' : `Submit Round ${state.currentRound}`}
+              {state.currentRound === 3 ? t('session.finishInterview') : t('session.submitRound', { number: state.currentRound })}
             </Button>
           </div>
         )}

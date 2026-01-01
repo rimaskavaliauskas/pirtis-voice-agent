@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useTranslation } from '@/lib/translations';
 import type { RecordingState } from '@/lib/types';
 
 // ============================================
@@ -22,46 +23,46 @@ interface QuestionCardProps {
 interface StatusConfig {
   bg: string;
   text: string;
-  label: string;
+  labelKey: string;
   pulse?: boolean;
 }
 
-function StatusBadge({ status }: { status: RecordingState | 'confirmed' }) {
+function StatusBadge({ status, t }: { status: RecordingState | 'confirmed'; t: (key: string) => string }) {
   const config: Record<RecordingState | 'confirmed', StatusConfig> = {
     idle: {
       bg: 'bg-white/5',
       text: 'text-muted-foreground',
-      label: 'Pending',
+      labelKey: 'questionCard.pending',
     },
     recording: {
       bg: 'bg-red-500/20',
       text: 'text-red-400',
-      label: 'Recording',
+      labelKey: 'questionCard.recording',
       pulse: true,
     },
     processing: {
       bg: 'bg-amber-500/20',
       text: 'text-amber-400',
-      label: 'Processing',
+      labelKey: 'questionCard.processing',
     },
     done: {
       bg: 'bg-blue-500/20',
       text: 'text-blue-400',
-      label: 'Review',
+      labelKey: 'questionCard.review',
     },
     confirmed: {
       bg: 'bg-green-500/20',
       text: 'text-green-400',
-      label: 'Done',
+      labelKey: 'questionCard.done',
     },
   };
 
-  const { bg, text, label, pulse } = config[status] ?? config.idle;
+  const { bg, text, labelKey, pulse } = config[status] ?? config.idle;
 
   return (
     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md border border-white/5 ${bg} ${text}`}>
       {pulse && <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse" />}
-      {label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -77,6 +78,7 @@ export function QuestionCard({
   isActive = false,
   className = '',
 }: QuestionCardProps) {
+  const { t } = useTranslation();
 
   // Dynamic styles based on state
   let stateStyles = 'border-white/5 hover:border-white/10 opacity-70'; // Default inactive
@@ -110,10 +112,10 @@ export function QuestionCard({
               )}
             </span>
             <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-              Question {questionNumber}
+              {t('session.question', { number: questionNumber })}
             </span>
           </div>
-          <StatusBadge status={status} />
+          <StatusBadge status={status} t={t} />
         </div>
       </CardHeader>
 

@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { startSession } from '@/lib/api';
 import { toast } from 'sonner';
+import { useTranslation, type Language } from '@/lib/translations';
 
-const LANGUAGES = [
+const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'lt', label: 'Lietuvių', flag: '🇱🇹' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
@@ -16,12 +17,12 @@ const LANGUAGES = [
 export default function LandingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('lt');
+  const { t, language, setLanguage } = useTranslation();
 
   const handleStartInterview = async () => {
     setIsLoading(true);
     try {
-      const response = await startSession(selectedLanguage);
+      const response = await startSession(language);
       router.push(`/session/${response.session_id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
@@ -53,12 +54,12 @@ export default function LandingPage() {
             </div>
           </div>
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white drop-shadow-lg">
-            Pirtis Design <span className="text-primary italic">Interview</span>
+            {t('landing.title')}
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            Your personal AI architect for the perfect sauna experience.
+            {t('landing.subtitle')}
             <br />
-            <span className="text-sm opacity-70">Voice-powered • Personalized • Professional</span>
+            <span className="text-sm opacity-70">{t('landing.tagline')}</span>
           </p>
         </div>
 
@@ -69,15 +70,15 @@ export default function LandingPage() {
 
             {/* Language Selection */}
             <div className="space-y-3 text-center">
-              <span className="text-sm uppercase tracking-widest text-muted-foreground">Select Language</span>
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">{t('landing.selectLanguage')}</span>
               <div className="flex justify-center gap-3">
                 {LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
-                    onClick={() => setSelectedLanguage(lang.code)}
+                    onClick={() => setLanguage(lang.code)}
                     className={`
                        px-6 py-3 rounded-xl border transition-all duration-300 flex items-center gap-2
-                       ${selectedLanguage === lang.code
+                       ${language === lang.code
                         ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-105'
                         : 'bg-black/20 text-gray-400 border-white/5 hover:border-white/20 hover:bg-black/40'}
                      `}
@@ -109,12 +110,12 @@ export default function LandingPage() {
                   {isLoading ? (
                     <>
                       <LoadingSpinner className="w-6 h-6" />
-                      Initializing...
+                      {t('landing.initializing')}
                     </>
                   ) : (
                     <>
                       <MicIcon className="w-6 h-6" />
-                      Start / Pradėti
+                      {t('landing.startButton')}
                     </>
                   )}
                 </span>
@@ -128,15 +129,15 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-sm text-gray-400 opacity-60">
           <div className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/5">
             <span className="block text-primary text-lg mb-1">①</span>
-            Share your needs
+            {t('landing.steps.share')}
           </div>
           <div className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/5">
             <span className="block text-primary text-lg mb-1">②</span>
-            Discuss details
+            {t('landing.steps.discuss')}
           </div>
           <div className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/5">
             <span className="block text-primary text-lg mb-1">③</span>
-            Get specific plan
+            {t('landing.steps.plan')}
           </div>
         </div>
       </div>

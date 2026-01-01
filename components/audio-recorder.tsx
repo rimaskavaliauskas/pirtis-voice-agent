@@ -9,6 +9,7 @@ import {
   createAudioUrl,
   revokeAudioUrl,
 } from '@/lib/audio-utils';
+import { useTranslation } from '@/lib/translations';
 import type { RecordingState } from '@/lib/types';
 
 // ============================================
@@ -74,6 +75,7 @@ export function AudioRecorderComponent({
   maxDuration = 120,
   className = '',
 }: AudioRecorderProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<RecordingState>('idle');
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -172,7 +174,7 @@ export function AudioRecorderComponent({
   if (!isSupported) {
     return (
       <div className={`p-6 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-center ${className}`}>
-        Audio recording is not supported in this browser.
+        {t('audio.notSupported')}
       </div>
     );
   }
@@ -205,7 +207,7 @@ export function AudioRecorderComponent({
             >
               <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-glow" />
               <MicIcon className="w-10 h-10 text-white drop-shadow-md relative z-10" />
-              <span className="absolute -bottom-8 text-sm font-medium text-white/50 tracking-widest group-hover:text-primary transition-colors">TAP TO SPEAK</span>
+              <span className="absolute -bottom-8 text-sm font-medium text-white/50 tracking-widest group-hover:text-primary transition-colors">{t('audio.tapToSpeak')}</span>
             </button>
           )}
 
@@ -246,8 +248,8 @@ export function AudioRecorderComponent({
             {formatDuration(duration)}
           </span>
         )}
-        {state === 'processing' && <span className="text-sm text-white/50 animate-pulse">Processing audio...</span>}
-        {state === 'done' && <span className="text-sm text-green-400">Recording captured</span>}
+        {state === 'processing' && <span className="text-sm text-white/50 animate-pulse">{t('audio.processing')}</span>}
+        {state === 'done' && <span className="text-sm text-green-400">{t('audio.captured')}</span>}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslation } from '@/lib/translations';
 
 interface TranscriptPreviewProps {
   transcript: string;
@@ -22,6 +23,7 @@ export function TranscriptPreview({
   isLoading = false,
   className = '',
 }: TranscriptPreviewProps) {
+  const { t } = useTranslation();
   const [editedTranscript, setEditedTranscript] = useState(transcript);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -56,7 +58,7 @@ export function TranscriptPreview({
       <Card className="glass-panel border-white/5">
         <CardHeader className="pb-2 border-b border-white/5">
           <CardTitle className="text-sm font-medium text-gray-400">
-            Your answer to:
+            {t('transcript.yourAnswer')}
           </CardTitle>
           <p className="text-sm italic text-gray-300">&quot;{questionText}&quot;</p>
         </CardHeader>
@@ -65,7 +67,7 @@ export function TranscriptPreview({
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-              <span className="ml-2 text-gray-400">Transcribing...</span>
+              <span className="ml-2 text-gray-400">{t('transcript.transcribing')}</span>
             </div>
           ) : isEditing ? (
             <div className="space-y-3">
@@ -74,14 +76,14 @@ export function TranscriptPreview({
                 onChange={(e) => setEditedTranscript(e.target.value)}
                 rows={4}
                 className="resize-none bg-black/30 border-white/10 text-white focus:border-primary/50"
-                placeholder="Edit your transcript..."
+                placeholder={t('transcript.editPlaceholder')}
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="hover:bg-white/10 hover:text-white">
-                  Cancel
+                  {t('transcript.cancel')}
                 </Button>
                 <Button size="sm" onClick={handleSaveEdit}>
-                  Save
+                  {t('transcript.save')}
                 </Button>
               </div>
             </div>
@@ -93,7 +95,7 @@ export function TranscriptPreview({
               >
                 {editedTranscript || (
                   <span className="text-gray-500 italic">
-                    No transcript available
+                    {t('transcript.noTranscript')}
                   </span>
                 )}
               </div>
@@ -110,7 +112,7 @@ export function TranscriptPreview({
 
           {isModified && !isEditing && (
             <p className="text-xs text-amber-500 mt-2 flex items-center gap-1">
-              <EditIcon className="w-3 h-3" /> Transcript manually edited
+              <EditIcon className="w-3 h-3" /> {t('transcript.edited')}
             </p>
           )}
         </CardContent>
@@ -125,7 +127,7 @@ export function TranscriptPreview({
               className="border-white/10 hover:bg-white/5 hover:text-white text-gray-400"
             >
               <RefreshIcon className="w-4 h-4 mr-2" />
-              Re-record
+              {t('transcript.reRecord')}
             </Button>
           )}
           <div className={onRetry ? '' : 'ml-auto'}>
@@ -136,7 +138,7 @@ export function TranscriptPreview({
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-6"
             >
               <CheckIcon className="w-4 h-4 mr-2" />
-              Confirm Answer
+              {t('transcript.confirm')}
             </Button>
           </div>
         </CardFooter>
