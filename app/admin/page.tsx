@@ -100,7 +100,7 @@ export default function AdminPage() {
 
     try {
       const response = await exportBrainConfig();
-      setYamlContent(response.yaml);
+      setYamlContent(response.yaml_content || '');
       toast.success('Configuration exported');
     } catch (error) {
       console.error('Export failed:', error);

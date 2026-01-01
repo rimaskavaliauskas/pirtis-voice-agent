@@ -162,7 +162,10 @@ export interface ResultsResponse {
 // ============================================
 
 export interface BrainConfigExportResponse {
-  yaml: string;
+  yaml_content: string;
+  slots_count?: number;
+  questions_count?: number;
+  risk_rules_count?: number;
 }
 
 export interface BrainConfigValidateRequest {

@@ -311,14 +311,20 @@ const ADMIN_KEY_HEADER = 'X-Admin-Key';
 
 function getAdminKey(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('admin_key');
+    const key = localStorage.getItem('admin_key');
+    if (key) {
+      // Sanitize: remove non-ASCII characters and trim
+      return key.replace(/[^\x00-\x7F]/g, '').trim();
+    }
   }
   return null;
 }
 
 export function setAdminKey(key: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('admin_key', key);
+    // Sanitize: remove non-ASCII characters and trim
+    const sanitized = key.replace(/[^\x00-\x7F]/g, '').trim();
+    localStorage.setItem('admin_key', sanitized);
   }
 }
 
