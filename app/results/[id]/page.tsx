@@ -23,7 +23,7 @@ export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [state, setState] = useState<PageState>('loading');
   const [markdown, setMarkdown] = useState<string>('');
@@ -34,6 +34,7 @@ export default function ResultsPage() {
   const [translationLanguage, setTranslationLanguage] = useState<string>('en');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [autoTranslated, setAutoTranslated] = useState(false);
 
   // Load results
   useEffect(() => {
@@ -57,6 +58,28 @@ export default function ResultsPage() {
 
     loadResults();
   }, [sessionId]);
+
+  // Auto-translate report when language is not Lithuanian
+  useEffect(() => {
+    if (language === 'lt' || !markdown || autoTranslated) return;
+
+    const autoTranslate = async () => {
+      setIsTranslating(true);
+      try {
+        const response = await translateReport(sessionId, language);
+        setTranslatedMarkdown(response.translated_markdown);
+        setTranslationLanguage(language);
+        setShowTranslation(true);
+        setAutoTranslated(true);
+      } catch (err) {
+        console.error('Auto-translation failed:', err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    autoTranslate();
+  }, [sessionId, language, markdown, autoTranslated]);
 
   // Handle download
   const handleDownload = useCallback(async () => {
@@ -149,13 +172,15 @@ export default function ResultsPage() {
     }
   }, [sessionId, translationLanguage, translatedMarkdown]);
 
-  // Render loading state
-  if (state === 'loading') {
+  // Render loading state (including auto-translation)
+  if (state === 'loading' || (language !== 'lt' && !autoTranslated && markdown)) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <LoadingSpinner className="w-10 h-10 mx-auto" />
-          <p className="text-muted-foreground">{t('results.loading')}</p>
+          <p className="text-muted-foreground">
+            {state === 'loading' ? t('results.loading') : t('results.translating')}
+          </p>
         </div>
       </main>
     );

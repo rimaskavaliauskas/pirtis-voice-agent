@@ -217,13 +217,14 @@ export default function InterviewPage() {
   }, [language, state.questions, state.roundSummary]);
 
   // Helper to get displayed text (translated or original)
-  // Returns null if translation is in progress (to show skeleton)
+  // Returns null if translation is needed but not yet available (to show skeleton)
   const getDisplayText = useCallback((originalText: string): string | null => {
     if (language === 'lt') return originalText;
-    // If translating and no translation yet, return null to show skeleton
-    if (isTranslating && !translatedTexts[originalText]) return null;
-    return translatedTexts[originalText] || originalText;
-  }, [language, translatedTexts, isTranslating]);
+    // If we have a translation, return it
+    if (translatedTexts[originalText]) return translatedTexts[originalText];
+    // Otherwise show skeleton (translation pending or in progress)
+    return null;
+  }, [language, translatedTexts]);
 
   // Get current question
   const currentQuestion = state.questions[state.activeQuestionIndex];
