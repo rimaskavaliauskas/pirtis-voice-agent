@@ -25,7 +25,7 @@ interface PreciseModeFlowProps {
   onCollectContact: () => void;
 }
 
-type FlowState = 'idle' | 'recording' | 'processing' | 'confirming' | 'submitting' | 'clarifying';
+type FlowState = 'idle' | 'recording' | 'processing' | 'confirming';
 
 // Cache for translated texts
 const translationCache = new Map<string, string>();
@@ -57,6 +57,9 @@ export function PreciseModeFlow({
 
   // Clarification
   const [clarificationQuestion, setClarificationQuestion] = useState<string | null>(null);
+
+  // Inline loading state for confirm button
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Translation state
   const [translatedText, setTranslatedText] = useState<string | null>(null);
@@ -111,10 +114,10 @@ export function PreciseModeFlow({
     }
   }, [sessionId, t]);
 
-  // Handle transcript confirmation - auto-submit after confirming
+  // Handle transcript confirmation - auto-submit with inline loading
   const handleConfirmTranscript = useCallback(async (editedTranscript: string) => {
     setTranscript(editedTranscript);
-    setFlowState('submitting');
+    setIsSubmitting(true);
 
     try {
       const response = await submitAnswers(sessionId, {
@@ -148,7 +151,7 @@ export function PreciseModeFlow({
         setFlowState('idle');
         setAudioBlob(null);
         setTranscript(null);
-        toast.info(t('session.clarifying'));
+        setIsSubmitting(false);
         return;
       }
 
@@ -159,6 +162,7 @@ export function PreciseModeFlow({
         setFlowState('idle');
         setAudioBlob(null);
         setTranscript(null);
+        setIsSubmitting(false);
       } else {
         // No more questions
         onCollectContact();
@@ -166,7 +170,7 @@ export function PreciseModeFlow({
     } catch (error) {
       console.error('Submit failed:', error);
       toast.error(t('session.submitFailed'));
-      setFlowState('confirming');
+      setIsSubmitting(false);
     }
   }, [sessionId, currentQuestion, clarificationQuestion, onCollectContact, t]);
 
@@ -228,19 +232,21 @@ export function PreciseModeFlow({
       {/* Main Question Card */}
       <Card className="glass-panel border-none shadow-2xl">
         <CardContent className="p-8 space-y-8">
-          {/* Question Text */}
-          <div className="text-center space-y-4">
-            {clarificationQuestion && (
-              <div className="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-sm">
-                {t('session.clarifying')}
-              </div>
-            )}
-            <p className="text-2xl font-light leading-relaxed text-white">
-              {displayText || (
-                <span className="inline-block h-8 w-full max-w-xl bg-white/10 rounded animate-pulse" />
+          {/* Question Text - hide during confirmation (TranscriptPreview shows it) */}
+          {flowState !== 'confirming' && (
+            <div className="text-center space-y-4">
+              {clarificationQuestion && (
+                <div className="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-sm">
+                  {t('session.clarifying')}
+                </div>
               )}
-            </p>
-          </div>
+              <p className="text-2xl font-light leading-relaxed text-white">
+                {displayText || (
+                  <span className="inline-block h-8 w-full max-w-xl bg-white/10 rounded animate-pulse" />
+                )}
+              </p>
+            </div>
+          )}
 
           {/* Flow States */}
           {flowState === 'idle' && (
@@ -260,15 +266,9 @@ export function PreciseModeFlow({
               questionText={displayText || currentQuestion.text}
               onConfirm={handleConfirmTranscript}
               onRetry={handleRetry}
+              isLoading={isSubmitting}
               className="mx-auto max-w-lg"
             />
-          )}
-
-          {flowState === 'submitting' && (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-gray-400">{t('session.processing')}</p>
-            </div>
           )}
         </CardContent>
       </Card>
