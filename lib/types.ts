@@ -169,7 +169,7 @@ export interface BrainConfigExportResponse {
 }
 
 export interface BrainConfigValidateRequest {
-  yaml: string;
+  yaml_content: string;
 }
 
 export interface BrainConfigValidateResponse {
@@ -178,7 +178,7 @@ export interface BrainConfigValidateResponse {
 }
 
 export interface BrainConfigImportRequest {
-  yaml: string;
+  yaml_content: string;
 }
 
 export interface BrainConfigImportResponse {

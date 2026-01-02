@@ -217,7 +217,7 @@ risk_rules:
     setValidationErrors([]);
 
     try {
-      const response = await validateBrainConfig({ yaml: yamlContent });
+      const response = await validateBrainConfig({ yaml_content: yamlContent });
 
       if (response.valid) {
         toast.success('Configuration is valid');
@@ -255,7 +255,7 @@ risk_rules:
     setIsLoading(true);
 
     try {
-      const response = await importBrainConfig({ yaml: yamlContent });
+      const response = await importBrainConfig({ yaml_content: yamlContent });
       toast.success(response.message || 'Configuration imported successfully');
     } catch (error) {
       console.error('Import failed:', error);
