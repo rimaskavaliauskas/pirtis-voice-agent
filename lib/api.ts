@@ -204,6 +204,7 @@ export async function getSessionState(sessionId: string): Promise<{
   completed_at: string | null;
   interview_mode?: InterviewMode;
   slot_status?: Array<{ slot_key: string; label: string; status: 'filled' | 'partial' | 'empty'; confidence: number }>;
+  progress_percent?: number;
 }> {
   return fetchWithRetry(
     `${API_BASE_URL}/session/${sessionId}/state`,

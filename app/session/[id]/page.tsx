@@ -12,6 +12,7 @@ import { ProcessingOverlay } from '@/components/processing-overlay';
 import { SessionSkeleton } from '@/components/session-skeleton';
 import { InterviewProgress } from '@/components/interview-progress';
 import { ContactForm } from '@/components/contact-form';
+import { PreciseModeFlow } from '@/components/precise-mode-flow';
 import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState, translateText } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
@@ -39,6 +40,7 @@ interface InterviewState {
   error: string | null;
   interviewMode: InterviewMode;
   slotStatus: SlotStatus[];
+  progressPercent: number;
 }
 
 // Cache for translated texts
@@ -82,6 +84,7 @@ export default function InterviewPage() {
     error: null,
     interviewMode: 'quick',
     slotStatus: [],
+    progressPercent: 0,
   });
 
   // Fetch session state from backend
@@ -135,6 +138,7 @@ export default function InterviewPage() {
           })),
           interviewMode: (response.interview_mode as InterviewMode) || 'quick',
           slotStatus: response.slot_status || [],
+          progressPercent: response.progress_percent || 0,
         }));
       } catch (error) {
         console.error('Failed to fetch session:', error);
@@ -446,6 +450,26 @@ export default function InterviewPage() {
     );
   }
 
+  // Precise mode: Typeform-style single question flow
+  if (state.interviewMode === 'precise' && state.questions.length > 0) {
+    return (
+      <main className="min-h-screen p-4 md:p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold">{t('session.title')}</h1>
+        </div>
+        <PreciseModeFlow
+          sessionId={sessionId}
+          initialQuestion={state.questions[0].question}
+          initialProgress={state.progressPercent}
+          initialSlotStatus={state.slotStatus}
+          onComplete={() => router.push(`/results/${sessionId}`)}
+          onCollectContact={() => setState((s) => ({ ...s, phase: 'collecting_contact' }))}
+        />
+      </main>
+    );
+  }
+
+  // Quick mode: Original round-based flow
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">

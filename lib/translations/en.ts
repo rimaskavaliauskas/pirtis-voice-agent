@@ -29,7 +29,14 @@ export const en = {
     interviewProgress: "Interview Progress",
     slotFilled: "Collected",
     slotPartial: "Needs clarification",
-    slotEmpty: "Not yet collected"
+    slotEmpty: "Not yet collected",
+    questionsAnswered: "{count} questions answered",
+    slotsProgress: "{filled}/{total} data collected",
+    more: "more",
+    processing: "Processing...",
+    transcriptionFailed: "Transcription failed. Please try again.",
+    submitFailed: "Submit failed. Please try again.",
+    interviewComplete: "Interview complete!"
   },
   questionCard: {
     pending: "Pending",

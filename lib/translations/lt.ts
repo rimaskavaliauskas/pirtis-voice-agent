@@ -29,7 +29,14 @@ export const lt = {
     interviewProgress: "Interviu progresas",
     slotFilled: "Surinkta",
     slotPartial: "Reikia patikslinti",
-    slotEmpty: "Dar nesurinkta"
+    slotEmpty: "Dar nesurinkta",
+    questionsAnswered: "{count} klausimai atsakyti",
+    slotsProgress: "{filled}/{total} duomenų surinkta",
+    more: "daugiau",
+    processing: "Apdorojama...",
+    transcriptionFailed: "Nepavyko transkribuoti. Bandykite dar kartą.",
+    submitFailed: "Nepavyko pateikti. Bandykite dar kartą.",
+    interviewComplete: "Interviu baigtas!"
   },
   questionCard: {
     pending: "Laukiama",

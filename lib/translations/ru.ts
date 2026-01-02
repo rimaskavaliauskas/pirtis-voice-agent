@@ -29,7 +29,14 @@ export const ru = {
     interviewProgress: "Прогресс интервью",
     slotFilled: "Собрано",
     slotPartial: "Требует уточнения",
-    slotEmpty: "Ещё не собрано"
+    slotEmpty: "Ещё не собрано",
+    questionsAnswered: "{count} вопросов отвечено",
+    slotsProgress: "{filled}/{total} данных собрано",
+    more: "ещё",
+    processing: "Обработка...",
+    transcriptionFailed: "Ошибка транскрипции. Попробуйте снова.",
+    submitFailed: "Ошибка отправки. Попробуйте снова.",
+    interviewComplete: "Интервью завершено!"
   },
   questionCard: {
     pending: "Ожидание",

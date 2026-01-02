@@ -134,6 +134,7 @@ export interface AnswerResponse {
   risk_flags: RiskFlag[];
   clarification_question?: string;
   slot_status?: SlotStatus[];
+  progress_percent?: number;
 }
 
 // POST /session/{id}/finalize
