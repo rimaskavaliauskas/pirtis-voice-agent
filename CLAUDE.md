@@ -76,11 +76,15 @@ POST /brain/config/import        - Import YAML config
 - `app/services/whisper.py` - STT transcription
 - `app/prompts/templates.py` - LLM prompts
 
-## User Flow
+## Interview Modes
 
-1. **Landing** - Select language (LT/EN/RU) -> Start Interview
-2. **Session** - 3 rounds x 3 questions -> Voice recording -> Transcription -> Confirm
-3. **Results** - View report -> Translate (EN/RU) -> Download
+| Mode | Flow | Questions | Use Case |
+|------|------|-----------|----------|
+| **Quick** | 3 rounds × 3 questions | Batch per round | Fast ~5 min interview |
+| **Precise** | Single question at a time | AI-generated follow-ups | Thorough ~10 min consultation |
+
+- Precise mode uses state machine: `idle → recording → processing → confirming → transitioning → idle`
+- AI generates contextual follow-ups using full conversation history, falls back to predefined question bank
 
 ## Development
 
@@ -125,12 +129,13 @@ journalctl -u agent-brain -f
 
 - **API URL fallback**: Use `/api/backend` (not `localhost:8000`) as fallback in `lib/api.ts` - `.env.local` isn't deployed to Vercel
 - **Test assertions**: Drift when UI text changes - update `__tests__/` assertions to match component implementation
-- Run `npm test` before deploying to catch assertion mismatches
+- **Backend file edits**: Use `scp` to upload Python scripts, then run remotely - avoids shell escaping issues with heredocs
+- **Function evolution**: Use `_v2` suffix for backend function updates to avoid breaking existing callers during transition
 
 ## i18n Translation Patterns
 
 - **Static UI text**: Use `lib/translations/` files + `useTranslation()` hook with `t('key.path')`
 - **Dynamic content** (questions, summaries): Call `POST /translate` endpoint, cache results
 - **React state for translations**: Use `Record<string, string>` NOT `Map` - React doesn't detect Map changes properly
-- **Prevent wrong language flash**: Clear translation state immediately when content changes, show skeleton until translation completes
+- **Async state coordination**: Use `pendingTransition` flag to wait for translation before state transitions (prevents skeleton flash)
 - **Language storage**: `localStorage.getItem('pirtis-language')` - used by both LanguageProvider and loading-messages.ts
