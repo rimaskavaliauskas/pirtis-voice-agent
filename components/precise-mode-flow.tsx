@@ -25,7 +25,7 @@ interface PreciseModeFlowProps {
   onCollectContact: () => void;
 }
 
-type FlowState = 'idle' | 'recording' | 'processing' | 'confirming';
+type FlowState = 'idle' | 'recording' | 'processing' | 'confirming' | 'transitioning';
 
 // Cache for translated texts
 const translationCache = new Map<string, string>();
@@ -64,11 +64,18 @@ export function PreciseModeFlow({
   // Translation state
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [pendingTransitionToIdle, setPendingTransitionToIdle] = useState(false);
 
   // Translate current question when it changes
   useEffect(() => {
     if (language === 'lt') {
       setTranslatedText(null);
+      // If waiting for translation to complete, transition now
+      if (pendingTransitionToIdle) {
+        setFlowState('idle');
+        setIsSubmitting(false);
+        setPendingTransitionToIdle(false);
+      }
       return;
     }
 
@@ -80,6 +87,12 @@ export function PreciseModeFlow({
 
     if (translationCache.has(cacheKey)) {
       setTranslatedText(translationCache.get(cacheKey)!);
+      // If waiting for translation to complete, transition now
+      if (pendingTransitionToIdle) {
+        setFlowState('idle');
+        setIsSubmitting(false);
+        setPendingTransitionToIdle(false);
+      }
       return;
     }
 
@@ -89,8 +102,16 @@ export function PreciseModeFlow({
         translationCache.set(cacheKey, translated);
         setTranslatedText(translated);
       })
-      .finally(() => setIsTranslating(false));
-  }, [currentQuestion.text, clarificationQuestion, language]);
+      .finally(() => {
+        setIsTranslating(false);
+        // If waiting for translation to complete, transition now
+        if (pendingTransitionToIdle) {
+          setFlowState('idle');
+          setIsSubmitting(false);
+          setPendingTransitionToIdle(false);
+        }
+      });
+  }, [currentQuestion.text, clarificationQuestion, language, pendingTransitionToIdle]);
 
   // Get display text
   const displayText = language === 'lt'
@@ -148,10 +169,11 @@ export function PreciseModeFlow({
       // Check for clarification question
       if (response.clarification_question) {
         setClarificationQuestion(response.clarification_question);
-        setFlowState('idle');
         setAudioBlob(null);
         setTranscript(null);
-        setIsSubmitting(false);
+        // Show transitioning state while waiting for translation
+        setFlowState('transitioning');
+        setPendingTransitionToIdle(true);
         return;
       }
 
@@ -159,10 +181,11 @@ export function PreciseModeFlow({
       if (response.next_questions.length > 0) {
         setCurrentQuestion(response.next_questions[0]);
         setClarificationQuestion(null);
-        setFlowState('idle');
         setAudioBlob(null);
         setTranscript(null);
-        setIsSubmitting(false);
+        // Show transitioning state while waiting for translation
+        setFlowState('transitioning');
+        setPendingTransitionToIdle(true);
       } else {
         // No more questions
         onCollectContact();
@@ -232,8 +255,8 @@ export function PreciseModeFlow({
       {/* Main Question Card */}
       <Card className="glass-panel border-none shadow-2xl">
         <CardContent className="p-8 space-y-8">
-          {/* Question Text - hide during confirmation (TranscriptPreview shows it) */}
-          {flowState !== 'confirming' && (
+          {/* Question Text - hide during confirmation and transitioning */}
+          {flowState !== 'confirming' && flowState !== 'transitioning' && (
             <div className="text-center space-y-4">
               {clarificationQuestion && (
                 <div className="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-sm">
@@ -258,6 +281,21 @@ export function PreciseModeFlow({
 
           {flowState === 'processing' && (
             <ProcessingOverlay type="transcription" className="mx-auto max-w-md" />
+          )}
+
+          {flowState === 'transitioning' && (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <div className="flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-3 h-3 rounded-full bg-primary/60 animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-gray-400">{t('session.processing')}</p>
+            </div>
           )}
 
           {flowState === 'confirming' && transcript && (
