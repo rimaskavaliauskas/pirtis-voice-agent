@@ -200,15 +200,17 @@ export function AudioRecorderComponent({
         <div className="relative z-10 transition-all duration-300 transform">
 
           {state === 'idle' && (
-            <button
-              onClick={startRecording}
-              disabled={disabled}
-              className="group relative w-24 h-24 rounded-full bg-gradient-to-br from-primary to-amber-600 shadow-[0_0_30px_rgba(251,191,36,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all outline-none"
-            >
-              <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-glow" />
-              <MicIcon className="w-10 h-10 text-white drop-shadow-md relative z-10" />
-              <span className="absolute -bottom-8 text-sm font-medium text-white/50 tracking-widest group-hover:text-primary transition-colors">{t('audio.tapToSpeak')}</span>
-            </button>
+            <div className="flex flex-col items-center group">
+              <button
+                onClick={startRecording}
+                disabled={disabled}
+                className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary to-amber-600 shadow-[0_0_30px_rgba(251,191,36,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all outline-none"
+              >
+                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-glow" />
+                <MicIcon className="w-10 h-10 text-white drop-shadow-md relative z-10" />
+              </button>
+              <span className="mt-4 text-sm font-medium text-white/50 tracking-widest group-hover:text-primary transition-colors">{t('audio.tapToSpeak')}</span>
+            </div>
           )}
 
           {state === 'recording' && (

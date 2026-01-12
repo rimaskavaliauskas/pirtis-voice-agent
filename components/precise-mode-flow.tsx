@@ -242,7 +242,7 @@ export function PreciseModeFlow({
           >
             {slot.status === 'filled' && '✓ '}
             {slot.status === 'partial' && '◐ '}
-            {slot.label}
+            {t(`slots.${slot.slot_key}`)}
           </div>
         ))}
         {slotStatus.length > 6 && (

@@ -69,7 +69,7 @@ export function InterviewProgress({
             >
               <div className="flex items-center gap-1.5">
                 <StatusIcon status={slot.status} />
-                <span className="truncate">{slot.label}</span>
+                <span className="truncate">{t(`slots.${slot.slot_key}`)}</span>
               </div>
             </div>
           ))}
