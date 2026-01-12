@@ -231,3 +231,115 @@ export interface HealthResponse {
   stt_ready: boolean;
   db_ready: boolean;
 }
+
+// ============================================
+// Expert Review Types
+// ============================================
+
+export interface SessionListItem {
+  session_id: string;
+  language: string;
+  interview_mode: string;
+  created_at: string;
+  completed_at: string | null;
+  has_report: boolean;
+  has_review: boolean;
+  questions_count: number;
+  slots_filled: number;
+  contact_name: string | null;
+}
+
+export interface QuestionAnswer {
+  question_id: string;
+  question_text: string;
+  answer_text: string;
+  round: number;
+}
+
+export interface SessionReviewData {
+  session_id: string;
+  language: string;
+  interview_mode: string;
+  created_at: string;
+  completed_at: string | null;
+  contact_info: Record<string, string> | null;
+  questions_answers: QuestionAnswer[];
+  slots: Record<string, Slot>;
+  risk_flags: RiskFlag[];
+  final_report: string | null;
+  existing_review: ExistingReview | null;
+}
+
+export interface ExistingReview {
+  id: number;
+  reviewer_name: string | null;
+  overall_rating: number;
+  overall_comments: string | null;
+  created_at: string | null;
+  question_reviews: QuestionReviewData[];
+  summary_review: SummaryReviewData | null;
+}
+
+export interface QuestionReviewData {
+  question_id: string;
+  original_question: string;
+  user_response: string | null;
+  effectiveness_rating: number;
+  what_could_be_better: string | null;
+  suggested_alternative: string | null;
+  missed_opportunities: string[] | null;
+}
+
+export interface SummaryReviewData {
+  original_summary: string;
+  accuracy_rating: number;
+  completeness_rating: number;
+  what_could_be_better: string | null;
+  missing_insights: string[] | null;
+}
+
+export interface QuestionReviewInput {
+  question_id: string;
+  original_question: string;
+  user_response: string | null;
+  effectiveness_rating: number;
+  what_could_be_better?: string;
+  suggested_alternative?: string;
+  missed_opportunities?: string[];
+}
+
+export interface SummaryReviewInput {
+  original_summary: string;
+  accuracy_rating: number;
+  completeness_rating: number;
+  what_could_be_better?: string;
+  missing_insights?: string[];
+}
+
+export interface ExpertReviewInput {
+  reviewer_name?: string;
+  overall_rating: number;
+  overall_comments?: string;
+  question_reviews: QuestionReviewInput[];
+  summary_review?: SummaryReviewInput;
+}
+
+export interface ExpertReviewResponse {
+  success: boolean;
+  review_id: number;
+  message: string;
+}
+
+export interface ExpertReviewStats {
+  total_reviews: number;
+  avg_overall_rating: number;
+  question_reviews: {
+    total: number;
+    avg_effectiveness: number;
+  };
+  summary_reviews: {
+    total: number;
+    avg_accuracy: number;
+    avg_completeness: number;
+  };
+}

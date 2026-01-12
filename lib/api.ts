@@ -19,6 +19,11 @@ import type {
   FeedbackSubmission,
   FeedbackEntry,
   FeedbackStats,
+  SessionListItem,
+  SessionReviewData,
+  ExpertReviewInput,
+  ExpertReviewResponse,
+  ExpertReviewStats,
 } from './types';
 
 // ============================================
@@ -527,6 +532,108 @@ export async function setReportFooter(
     `${API_BASE_URL}/brain/config/config/report-footer?footer_text=${encodeURIComponent(footerText)}`,
     {
       method: 'PUT',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+// ============================================
+// Admin: Expert Review API
+// ============================================
+
+/**
+ * List sessions available for expert review (admin only)
+ */
+export async function listSessions(options?: {
+  limit?: number;
+  offset?: number;
+  completed_only?: boolean;
+  has_review?: boolean;
+  language?: string;
+}): Promise<SessionListItem[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  const params = new URLSearchParams();
+  if (options?.limit) params.append('limit', String(options.limit));
+  if (options?.offset) params.append('offset', String(options.offset));
+  if (options?.completed_only !== undefined) params.append('completed_only', String(options.completed_only));
+  if (options?.has_review !== undefined) params.append('has_review', String(options.has_review));
+  if (options?.language) params.append('language', options.language);
+
+  const queryString = params.toString();
+  const url = `${API_BASE_URL}/admin/sessions${queryString ? `?${queryString}` : ''}`;
+
+  return fetchWithRetry<SessionListItem[]>(url, {
+    method: 'GET',
+    headers: {
+      [ADMIN_KEY_HEADER]: adminKey,
+    },
+  });
+}
+
+/**
+ * Get session data for expert review (admin only)
+ */
+export async function getSessionForReview(sessionId: string): Promise<SessionReviewData> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<SessionReviewData>(
+    `${API_BASE_URL}/admin/sessions/${sessionId}/review`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Submit expert review for a session (admin only)
+ */
+export async function submitExpertReview(
+  sessionId: string,
+  review: ExpertReviewInput
+): Promise<ExpertReviewResponse> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<ExpertReviewResponse>(
+    `${API_BASE_URL}/admin/sessions/${sessionId}/review`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+      body: JSON.stringify(review),
+    }
+  );
+}
+
+/**
+ * Get expert review statistics (admin only)
+ */
+export async function getExpertReviewStats(): Promise<ExpertReviewStats> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<ExpertReviewStats>(
+    `${API_BASE_URL}/admin/reviews/stats`,
+    {
+      method: 'GET',
       headers: {
         [ADMIN_KEY_HEADER]: adminKey,
       },
