@@ -343,3 +343,35 @@ export interface ExpertReviewStats {
     avg_completeness: number;
   };
 }
+
+// ============================================
+// Skill Management Types
+// ============================================
+
+export interface SkillVersion {
+  id: number;
+  version: string;
+  is_active: boolean;
+  created_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  change_summary: string | null;
+  content_length: number;
+}
+
+export interface LearnedRule {
+  id: number;
+  rule_text: string;
+  rule_type: string;
+  confidence_score: number;
+  source_pattern: string;
+  rule_text_en: string;
+  affected_questions: string[];
+  created_at: string | null;
+}
+
+export interface GenerateRulesResponse {
+  rules_generated: number;
+  rules: LearnedRule[];
+  message: string;
+}

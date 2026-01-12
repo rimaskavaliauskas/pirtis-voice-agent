@@ -25,16 +25,24 @@ import {
   getFeedbackStats,
   listSessions,
   getExpertReviewStats,
+  listSkillVersions,
+  activateSkillVersion,
+  generateRulesFromFeedback,
+  getPendingRules,
+  getApprovedRules,
+  approveRule,
+  rejectRule,
+  createSkillVersionFromRules,
 } from '@/lib/api';
 import { toast } from 'sonner';
-import type { FeedbackEntry, FeedbackStats, SessionListItem, ExpertReviewStats } from '@/lib/types';
+import type { FeedbackEntry, FeedbackStats, SessionListItem, ExpertReviewStats, SkillVersion, LearnedRule } from '@/lib/types';
 
 // ============================================
 // Types
 // ============================================
 
 type AdminState = 'not_authenticated' | 'authenticated' | 'loading';
-type AdminTab = 'config' | 'feedback' | 'review';
+type AdminTab = 'config' | 'feedback' | 'review' | 'skill';
 
 // ============================================
 // Component
@@ -68,6 +76,16 @@ export default function AdminPage() {
   const [expertReviewStats, setExpertReviewStats] = useState<ExpertReviewStats | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [reviewFilter, setReviewFilter] = useState<'all' | 'pending' | 'reviewed'>('all');
+
+  // Skill management state
+  const [skillVersions, setSkillVersions] = useState<SkillVersion[]>([]);
+  const [pendingRules, setPendingRules] = useState<LearnedRule[]>([]);
+  const [approvedRules, setApprovedRules] = useState<LearnedRule[]>([]);
+  const [skillLoading, setSkillLoading] = useState(false);
+  const [generatingRules, setGeneratingRules] = useState(false);
+  const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set());
+  const [newVersionInput, setNewVersionInput] = useState('');
+  const [approverName, setApproverName] = useState('');
 
   // Check if already authenticated
   useEffect(() => {
@@ -356,6 +374,121 @@ risk_rules:
     }
   }, [reviewFilter]);
 
+  // Load skill data
+  const loadSkillData = useCallback(async () => {
+    setSkillLoading(true);
+    try {
+      const [versions, pending, approved] = await Promise.all([
+        listSkillVersions(),
+        getPendingRules(),
+        getApprovedRules(),
+      ]);
+      setSkillVersions(versions);
+      setPendingRules(pending);
+      setApprovedRules(approved);
+    } catch (error) {
+      console.error('Failed to load skill data:', error);
+      toast.error('Failed to load skill data');
+    } finally {
+      setSkillLoading(false);
+    }
+  }, []);
+
+  // Generate rules from feedback
+  const handleGenerateRules = useCallback(async () => {
+    setGeneratingRules(true);
+    try {
+      const result = await generateRulesFromFeedback(1, 90); // min 1 review, last 90 days
+      if (result.rules_generated > 0) {
+        toast.success(`Generated ${result.rules_generated} rules from feedback`);
+        loadSkillData();
+      } else {
+        toast.info(result.message);
+      }
+    } catch (error) {
+      console.error('Failed to generate rules:', error);
+      toast.error('Failed to generate rules');
+    } finally {
+      setGeneratingRules(false);
+    }
+  }, [loadSkillData]);
+
+  // Approve a rule
+  const handleApproveRule = useCallback(async (ruleId: number) => {
+    try {
+      await approveRule(ruleId);
+      toast.success('Rule approved');
+      loadSkillData();
+    } catch (error) {
+      console.error('Failed to approve rule:', error);
+      toast.error('Failed to approve rule');
+    }
+  }, [loadSkillData]);
+
+  // Reject a rule
+  const handleRejectRule = useCallback(async (ruleId: number) => {
+    try {
+      await rejectRule(ruleId);
+      toast.success('Rule rejected');
+      loadSkillData();
+    } catch (error) {
+      console.error('Failed to reject rule:', error);
+      toast.error('Failed to reject rule');
+    }
+  }, [loadSkillData]);
+
+  // Create new skill version from approved rules
+  const handleCreateSkillVersion = useCallback(async () => {
+    if (!newVersionInput.trim()) {
+      toast.error('Please enter a version number');
+      return;
+    }
+    if (selectedRules.size === 0) {
+      toast.error('Please select at least one approved rule');
+      return;
+    }
+
+    try {
+      const result = await createSkillVersionFromRules(
+        newVersionInput,
+        Array.from(selectedRules),
+        approverName || 'Admin'
+      );
+      toast.success(result.message);
+      setSelectedRules(new Set());
+      setNewVersionInput('');
+      loadSkillData();
+    } catch (error) {
+      console.error('Failed to create skill version:', error);
+      toast.error('Failed to create skill version');
+    }
+  }, [newVersionInput, selectedRules, approverName, loadSkillData]);
+
+  // Activate a skill version
+  const handleActivateVersion = useCallback(async (versionId: number) => {
+    try {
+      await activateSkillVersion(versionId);
+      toast.success('Skill version activated');
+      loadSkillData();
+    } catch (error) {
+      console.error('Failed to activate version:', error);
+      toast.error('Failed to activate version');
+    }
+  }, [loadSkillData]);
+
+  // Toggle rule selection
+  const toggleRuleSelection = useCallback((ruleId: number) => {
+    setSelectedRules((prev) => {
+      const next = new Set(prev);
+      if (next.has(ruleId)) {
+        next.delete(ruleId);
+      } else {
+        next.add(ruleId);
+      }
+      return next;
+    });
+  }, []);
+
   // Load data when tab changes
   useEffect(() => {
     if (authState !== 'authenticated') return;
@@ -366,8 +499,10 @@ risk_rules:
       loadFeedback();
     } else if (activeTab === 'review') {
       loadSessions();
+    } else if (activeTab === 'skill') {
+      loadSkillData();
     }
-  }, [activeTab, authState, loadFooter, loadFeedback, loadSessions]);
+  }, [activeTab, authState, loadFooter, loadFeedback, loadSessions, loadSkillData]);
 
   // Auth dialog
   if (authState === 'loading') {
@@ -466,6 +601,22 @@ risk_rules:
               {expertReviewStats && expertReviewStats.total_reviews > 0 && (
                 <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400">
                   {expertReviewStats.total_reviews}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('skill')}
+              className={`px-4 py-2 rounded-t-lg transition-colors ${
+                activeTab === 'skill'
+                  ? 'bg-primary/20 text-primary border-b-2 border-primary'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <SkillIcon className="w-4 h-4 inline mr-2" />
+              Skill Evolution
+              {pendingRules.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-500/20 text-orange-400">
+                  {pendingRules.length}
                 </span>
               )}
             </button>
@@ -833,6 +984,223 @@ risk_rules:
               </Card>
             </>
           )}
+
+          {/* Skill Evolution Tab Content */}
+          {activeTab === 'skill' && (
+            <>
+              {/* Current Skill Version */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Skill Versions</CardTitle>
+                  <CardDescription>
+                    Manage Pirtis Design Skill versions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {skillLoading ? (
+                    <div className="flex justify-center py-4">
+                      <LoadingSpinner className="w-6 h-6" />
+                    </div>
+                  ) : skillVersions.length === 0 ? (
+                    <p className="text-gray-400">No skill versions found</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {skillVersions.map((version) => (
+                        <div
+                          key={version.id}
+                          className={`p-3 rounded-lg border ${
+                            version.is_active
+                              ? 'bg-green-500/10 border-green-500/30'
+                              : 'bg-white/5 border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-medium">v{version.version}</span>
+                              {version.is_active && (
+                                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400">
+                                  Active
+                                </span>
+                              )}
+                              <span className="ml-2 text-xs text-gray-500">
+                                {version.content_length.toLocaleString()} chars
+                              </span>
+                            </div>
+                            {!version.is_active && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleActivateVersion(version.id)}
+                              >
+                                Activate
+                              </Button>
+                            )}
+                          </div>
+                          {version.change_summary && (
+                            <p className="text-xs text-gray-400 mt-1">{version.change_summary}</p>
+                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Created: {version.created_at ? new Date(version.created_at).toLocaleDateString() : 'N/A'}
+                            {version.approved_by && ` by ${version.approved_by}`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Generate Rules */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Generate Improvement Rules</CardTitle>
+                    <CardDescription>
+                      Analyze expert feedback to generate skill improvements
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleGenerateRules} disabled={generatingRules}>
+                    {generatingRules ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <BrainIcon className="w-4 h-4 mr-2" />
+                        Generate Rules
+                      </>
+                    )}
+                  </Button>
+                </CardHeader>
+              </Card>
+
+              {/* Pending Rules */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pending Rules ({pendingRules.length})</CardTitle>
+                  <CardDescription>
+                    Review and approve rules generated from expert feedback
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pendingRules.length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">
+                      No pending rules. Click &quot;Generate Rules&quot; after collecting expert reviews.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingRules.map((rule) => (
+                        <div
+                          key={rule.id}
+                          className="p-4 bg-white/5 rounded-lg border border-white/10"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${
+                              rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
+                              rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
+                              rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {rule.rule_type}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Confidence: {(rule.confidence_score * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-200 mb-1">{rule.rule_text}</p>
+                          <p className="text-xs text-gray-400 mb-2">EN: {rule.rule_text_en}</p>
+                          {rule.source_pattern && (
+                            <p className="text-xs text-gray-500 mb-2">Source: {rule.source_pattern}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveRule(rule.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckIcon className="w-3 h-3 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectRule(rule.id)}
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Approved Rules & Create Version */}
+              {approvedRules.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Create New Skill Version</CardTitle>
+                    <CardDescription>
+                      Select approved rules to incorporate into a new skill version
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      {approvedRules.map((rule) => (
+                        <label
+                          key={rule.id}
+                          className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10 cursor-pointer hover:border-primary/50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedRules.has(rule.id)}
+                            onChange={() => toggleRuleSelection(rule.id)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-200">{rule.rule_text_en}</p>
+                            <p className="text-xs text-gray-500">{rule.rule_type}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-4 items-end">
+                      <div className="flex-1">
+                        <label className="text-sm text-gray-400 block mb-1">New Version</label>
+                        <input
+                          type="text"
+                          value={newVersionInput}
+                          onChange={(e) => setNewVersionInput(e.target.value)}
+                          placeholder="e.g., 3.2"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm text-gray-400 block mb-1">Approved By</label>
+                        <input
+                          type="text"
+                          value={approverName}
+                          onChange={(e) => setApproverName(e.target.value)}
+                          placeholder="Your name"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleCreateSkillVersion}
+                        disabled={selectedRules.size === 0 || !newVersionInput}
+                      >
+                        Create Version
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
         </div>
       )}
     </main>
@@ -951,6 +1319,25 @@ function ReviewIcon({ className }: { className?: string }) {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function SkillIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  );
+}
+
+function BrainIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54" />
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54" />
     </svg>
   );
 }

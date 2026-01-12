@@ -640,3 +640,184 @@ export async function getExpertReviewStats(): Promise<ExpertReviewStats> {
     }
   );
 }
+
+// ============================================
+// Admin: Skill Management API
+// ============================================
+
+import type { SkillVersion, LearnedRule, GenerateRulesResponse } from './types';
+
+/**
+ * List all skill versions (admin only)
+ */
+export async function listSkillVersions(): Promise<SkillVersion[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<SkillVersion[]>(
+    `${API_BASE_URL}/admin/skill/versions`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Activate a skill version (admin only)
+ */
+export async function activateSkillVersion(versionId: number): Promise<{ success: boolean; message: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ success: boolean; message: string }>(
+    `${API_BASE_URL}/admin/skill/versions/${versionId}/activate`,
+    {
+      method: 'POST',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Generate rules from expert feedback (admin only)
+ */
+export async function generateRulesFromFeedback(
+  minReviews: number = 3,
+  sinceDays: number = 30
+): Promise<GenerateRulesResponse> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<GenerateRulesResponse>(
+    `${API_BASE_URL}/admin/skill/rules/generate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+      body: JSON.stringify({ min_reviews: minReviews, since_days: sinceDays }),
+    }
+  );
+}
+
+/**
+ * Get pending rules for approval (admin only)
+ */
+export async function getPendingRules(): Promise<LearnedRule[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<LearnedRule[]>(
+    `${API_BASE_URL}/admin/skill/rules/pending`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Get approved rules (admin only)
+ */
+export async function getApprovedRules(): Promise<LearnedRule[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<LearnedRule[]>(
+    `${API_BASE_URL}/admin/skill/rules/approved`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Approve a rule (admin only)
+ */
+export async function approveRule(ruleId: number): Promise<{ success: boolean; message: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ success: boolean; message: string }>(
+    `${API_BASE_URL}/admin/skill/rules/${ruleId}/approve`,
+    {
+      method: 'POST',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Reject a rule (admin only)
+ */
+export async function rejectRule(ruleId: number): Promise<{ success: boolean; message: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ success: boolean; message: string }>(
+    `${API_BASE_URL}/admin/skill/rules/${ruleId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Create new skill version from approved rules (admin only)
+ */
+export async function createSkillVersionFromRules(
+  newVersion: string,
+  approvedRuleIds: number[],
+  approvedBy: string
+): Promise<{ success: boolean; skill_id: number; version: string; message: string }> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<{ success: boolean; skill_id: number; version: string; message: string }>(
+    `${API_BASE_URL}/admin/skill/versions/create`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+      body: JSON.stringify({
+        new_version: newVersion,
+        approved_rule_ids: approvedRuleIds,
+        approved_by: approvedBy,
+      }),
+    }
+  );
+}
