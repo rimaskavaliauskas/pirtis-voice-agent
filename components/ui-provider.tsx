@@ -25,17 +25,15 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const [userMode, setUserMode] = useState<UserMode>('guest');
   const [userData, setUserData] = useState<{ email?: string; name?: string } | null>(null);
 
-  // Logic to hide sauna on results page automatically if not hidden by local state
+  // Logic to control sauna visibility based on page
   useEffect(() => {
-    if (pathname.startsWith('/results')) {
+    if (pathname.startsWith('/results') || pathname.startsWith('/session')) {
+      // Hide sauna on session and results pages to avoid overlap with content
       setSaunaVisible(false);
       setSaunaPhase('hidden');
     } else if (pathname === '/') {
       setSaunaVisible(true);
       setSaunaPhase('idle');
-    } else if (pathname.startsWith('/session')) {
-      setSaunaVisible(true);
-      if (saunaPhase === 'hidden' || saunaPhase === 'idle') setSaunaPhase('active');
     }
   }, [pathname]);
 
