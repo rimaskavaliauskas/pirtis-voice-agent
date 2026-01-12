@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTranslation } from '@/lib/translations';
+import { useUI } from '@/components/ui-provider';
 import type { ContactInfo } from '@/lib/types';
 
 interface ContactFormProps {
@@ -20,8 +21,10 @@ export function ContactForm({
   className = '',
 }: ContactFormProps) {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const { userData } = useUI();
+
+  const [name, setName] = useState(userData?.name || '');
+  const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

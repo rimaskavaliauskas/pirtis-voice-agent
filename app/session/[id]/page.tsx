@@ -16,6 +16,7 @@ import { PreciseModeFlow } from '@/components/precise-mode-flow';
 import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState, translateText } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
+import { useUI } from '@/components/ui-provider';
 import type { Question, QuestionState, RecordingState, RiskFlag, InterviewMode, SlotStatus, ContactInfo } from '@/lib/types';
 
 // ============================================
@@ -69,6 +70,7 @@ export default function InterviewPage() {
   const router = useRouter();
   const sessionId = params.id as string;
   const { t, language } = useTranslation();
+  const { setSaunaPhase, setSaunaVisible } = useUI();
 
   // State for translated question texts (key: original text, value: translated)
   const [translatedTexts, setTranslatedTexts] = useState<Record<string, string>>({});
@@ -151,7 +153,9 @@ export default function InterviewPage() {
     };
 
     fetchSession();
-  }, [sessionId, router]);
+    setSaunaPhase('active');
+    setSaunaVisible(true);
+  }, [sessionId, router, setSaunaPhase, setSaunaVisible]);
 
   // Translate questions when language changes or questions load
   useEffect(() => {
@@ -379,6 +383,7 @@ export default function InterviewPage() {
   // Handle contact form submission
   const handleContactSubmit = useCallback(async (contactInfo: ContactInfo) => {
     setState((s) => ({ ...s, phase: 'finalizing' }));
+    setSaunaVisible(false); // Hide just before result
 
     try {
       await finalizeSession(sessionId, contactInfo);
@@ -393,6 +398,7 @@ export default function InterviewPage() {
   // Handle contact form skip
   const handleContactSkip = useCallback(async () => {
     setState((s) => ({ ...s, phase: 'finalizing' }));
+    setSaunaVisible(false); // Hide just before result
 
     try {
       await finalizeSession(sessionId);
@@ -473,8 +479,7 @@ export default function InterviewPage() {
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 pt-32">
           <h1 className="text-2xl font-bold">{t('session.title')}</h1>
           <RoundIndicator
             currentRound={state.currentRound}
