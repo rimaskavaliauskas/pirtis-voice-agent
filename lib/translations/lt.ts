@@ -15,7 +15,20 @@ export const lt = {
       share: "Pasidalinkite savo poreikiais",
       discuss: "Aptarkite detales",
       plan: "Gaukite konkretų planą"
-    }
+    },
+    shortInterview: "Trumpas interviu",
+    shortInterviewDesc: "Greitas, anoniminis ir orientuotas tik į pagrindinius dizaino reikalavimus. Geriausias greitos architektūrinės įžvalgos.",
+    professionalSession: "Profesionali sesija",
+    professionalSessionDesc: "Išsami techninė analizė, kurioje išsaugome jūsų projekto kontekstą tiksliam tolesniam darbui ir medžiagų planavimui.",
+    selectModel: "Pasirinkti →",
+    configureSession: "Sukonfigūruokite savo sesiją.",
+    launchPhase: "Pradėti 1 fazę",
+    switchMode: "← Keisti režimą",
+    yourName: "Jūsų vardas",
+    enterName: "Įveskite savo vardą",
+    emailAddress: "El. pašto adresas",
+    enterEmail: "Įveskite savo el. paštą",
+    agreeTerms: "Tęsdami sutinkate su mūsų AI apdorojimo sąlygomis."
   },
   session: {
     title: "Pirties dizaino interviu",

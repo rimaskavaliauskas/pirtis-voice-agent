@@ -459,7 +459,7 @@ export default function InterviewPage() {
   // Precise mode: Typeform-style single question flow
   if (state.interviewMode === 'precise' && state.questions.length > 0) {
     return (
-      <main className="min-h-screen p-4 md:p-8 pt-44">
+      <main className="min-h-screen p-4 md:p-8 pt-52">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold">{t('session.title')}</h1>
         </div>

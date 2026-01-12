@@ -15,7 +15,20 @@ export const en = {
       share: "Share your needs",
       discuss: "Discuss details",
       plan: "Get specific plan"
-    }
+    },
+    shortInterview: "Short Interview",
+    shortInterviewDesc: "Fast, anonymized, and focused strictly on the core design requirements. Best for quick architectural insights.",
+    professionalSession: "Professional Session",
+    professionalSessionDesc: "Comprehensive technical analysis where we save your project context for precision follow-up and material planning.",
+    selectModel: "Select Model →",
+    configureSession: "Configure your session to begin.",
+    launchPhase: "Launch Phase 1",
+    switchMode: "← Switch Mode",
+    yourName: "Your Name",
+    enterName: "Enter your name",
+    emailAddress: "Email Address",
+    enterEmail: "Enter your email",
+    agreeTerms: "By continuing, you agree to our AI processing terms."
   },
   session: {
     title: "Pirtis Design Interview",

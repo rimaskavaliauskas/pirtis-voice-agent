@@ -128,11 +128,11 @@ export default function LandingPage() {
                 <FlashIcon className="w-10 h-10" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-white group-hover:text-primary transition-colors">Short Interview</h2>
-                <p className="text-gray-400 leading-relaxed">Fast, anonymized, and focused strictly on the core design requirements. Best for quick architectural insights.</p>
+                <h2 className="text-3xl font-bold text-white group-hover:text-primary transition-colors">{t('landing.shortInterview')}</h2>
+                <p className="text-gray-400 leading-relaxed">{t('landing.shortInterviewDesc')}</p>
               </div>
               <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-primary text-sm font-bold uppercase tracking-widest">Select Model →</span>
+                <span className="text-primary text-sm font-bold uppercase tracking-widest">{t('landing.selectModel')}</span>
               </div>
             </div>
 
@@ -145,11 +145,11 @@ export default function LandingPage() {
                 <ExpertIcon className="w-10 h-10" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-white group-hover:text-amber-500 transition-colors">Professional Session</h2>
-                <p className="text-gray-400 leading-relaxed">Comprehensive technical analysis where we save your project context for precision follow-up and material planning.</p>
+                <h2 className="text-3xl font-bold text-white group-hover:text-amber-500 transition-colors">{t('landing.professionalSession')}</h2>
+                <p className="text-gray-400 leading-relaxed">{t('landing.professionalSessionDesc')}</p>
               </div>
               <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-amber-500 text-sm font-bold uppercase tracking-widest">Select Model →</span>
+                <span className="text-amber-500 text-sm font-bold uppercase tracking-widest">{t('landing.selectModel')}</span>
               </div>
             </div>
 
@@ -162,36 +162,36 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <h2 className="text-2xl font-bold text-white">
-                      {selectedModel === 'short' ? 'Short Interview' : 'Professional Session'}
+                      {selectedModel === 'short' ? t('landing.shortInterview') : t('landing.professionalSession')}
                     </h2>
-                    <p className="text-sm text-gray-500">Configure your session to begin.</p>
+                    <p className="text-sm text-gray-500">{t('landing.configureSession')}</p>
                   </div>
                   <Button
                     variant="ghost"
                     onClick={() => setSelectionPhase('choosing')}
                     className="text-gray-500 hover:text-white"
                   >
-                    ← Switch Mode
+                    {t('landing.switchMode')}
                   </Button>
                 </div>
 
                 {selectedModel === 'premium' && (
                   <div className="space-y-4 animate-in fade-in duration-500">
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-widest text-primary font-bold">Your Name</label>
+                      <label className="text-xs uppercase tracking-widest text-primary font-bold">{t('landing.yourName')}</label>
                       <input
                         type="text"
-                        placeholder="Enter your name"
+                        placeholder={t('landing.enterName')}
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-widest text-primary font-bold">Email Address</label>
+                      <label className="text-xs uppercase tracking-widest text-primary font-bold">{t('landing.emailAddress')}</label>
                       <input
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder={t('landing.enterEmail')}
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all"
@@ -205,11 +205,11 @@ export default function LandingPage() {
                   disabled={isLoading}
                   className={`w-full h-16 text-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${selectedModel === 'premium' ? 'bg-primary text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}
                 >
-                  {isLoading ? <LoadingSpinner /> : "Launch Phase 1"}
+                  {isLoading ? <LoadingSpinner /> : t('landing.launchPhase')}
                 </Button>
 
                 <p className="text-center text-xs text-gray-600">
-                  By continuing, you agree to our AI processing terms.
+                  {t('landing.agreeTerms')}
                 </p>
               </CardContent>
             </Card>
