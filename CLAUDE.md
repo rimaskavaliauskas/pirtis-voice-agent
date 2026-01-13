@@ -41,7 +41,8 @@ Next.js 16 + shadcn/ui    -->  FastAPI + Uvicorn
 | `/` | Landing page with language selector (LT/EN/RU) |
 | `/session/[id]` | Interview session (3 rounds x 3 questions) |
 | `/results/[id]` | Final report with translation buttons |
-| `/admin` | Brain configuration management |
+| `/admin` | Admin panel (Config, Feedback, Review, Skill Evolution tabs) |
+| `/admin/review/[id]` | Expert review form for specific session |
 
 ## Backend Endpoints
 
@@ -55,6 +56,13 @@ GET  /session/{id}/download      - Download markdown
 POST /translate                  - Translate any text (for dynamic UI content)
 GET  /brain/config/export        - Export YAML config
 POST /brain/config/import        - Import YAML config
+
+# Admin endpoints (require X-Admin-Key header)
+GET  /admin/sessions             - List sessions for expert review
+GET  /admin/sessions/{id}/review - Get session Q&A for review
+POST /admin/sessions/{id}/review - Submit expert review
+GET  /admin/skill/versions       - List skill versions
+POST /admin/skill/rules/generate - Generate rules from expert feedback
 ```
 
 ## Key Files
@@ -71,8 +79,10 @@ POST /brain/config/import        - Import YAML config
 ### Backend (VPS `/opt/agent-brain/`)
 - `app/main.py` - FastAPI app + CORS
 - `app/routers/session.py` - Session endpoints
-- `app/routers/admin.py` - Admin endpoints
+- `app/routers/admin.py` - Admin endpoints (sessions, reviews)
+- `app/routers/skill_admin.py` - Skill evolution endpoints
 - `app/services/llm.py` - Gemini + Claude fallback
+- `app/services/skill_evolution.py` - Expert feedback → rule generation
 - `app/services/whisper.py` - STT transcription
 - `app/prompts/templates.py` - LLM prompts
 
@@ -85,6 +95,17 @@ POST /brain/config/import        - Import YAML config
 
 - Precise mode uses state machine: `idle → recording → processing → confirming → transitioning → idle`
 - AI generates contextual follow-ups using full conversation history, falls back to predefined question bank
+
+## Skill Evolution System
+
+LLM-driven continuous improvement from expert feedback:
+1. **Expert reviews sessions** → rates questions, suggests improvements
+2. **Generate rules** → LLM analyzes feedback patterns, creates actionable rules
+3. **Approve/reject rules** → admin curates generated rules
+4. **Create skill version** → LLM integrates approved rules into skill document
+5. **Activate version** → new skill used for future interviews
+
+Tables: `skill_versions` (versioned skill content), `skill_learned_rules` (generated rules with approval status)
 
 ## Development
 
