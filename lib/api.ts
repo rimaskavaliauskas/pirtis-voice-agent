@@ -641,6 +641,30 @@ export async function getExpertReviewStats(): Promise<ExpertReviewStats> {
   );
 }
 
+/**
+ * Delete a session and all related data (admin only)
+ */
+export async function deleteSession(sessionId: string): Promise<{
+  success: boolean;
+  message: string;
+  deleted_counts: Record<string, number>;
+}> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry(
+    `${API_BASE_URL}/admin/sessions/${sessionId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
 // ============================================
 // Admin: Skill Management API
 // ============================================

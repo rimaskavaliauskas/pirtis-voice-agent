@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { getSessionForReview, submitExpertReview } from '@/lib/api';
+import { getSessionForReview, submitExpertReview, deleteSession } from '@/lib/api';
 import { toast } from 'sonner';
 import type { SessionReviewData, QuestionReviewInput, ExpertReviewInput } from '@/lib/types';
 
@@ -20,6 +20,8 @@ export default function SessionReviewPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sessionData, setSessionData] = useState<SessionReviewData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,6 +165,22 @@ export default function SessionReviewPage() {
     }
   }, [sessionData, sessionId, reviewerName, overallRating, overallComments, questionReviews, summaryReview, router]);
 
+  // Handle delete
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteSession(sessionId);
+      toast.success(`Session deleted. Removed: ${result.deleted_counts.sessions} session, ${result.deleted_counts.messages} messages, ${result.deleted_counts.expert_reviews} reviews`);
+      router.push('/admin?tab=review');
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+      toast.error('Failed to delete session');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }, [sessionId, router]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -204,10 +222,65 @@ export default function SessionReviewPage() {
               Session {sessionId.slice(0, 8)}... | {sessionData.language.toUpperCase()} | {sessionData.interview_mode}
             </p>
           </div>
-          <Button variant="outline" onClick={() => router.push('/admin')}>
-            Back to Admin
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+            >
+              <TrashIcon className="w-4 h-4 mr-2" />
+              Delete Session
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/admin')}>
+              Back to Admin
+            </Button>
+          </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader>
+                <CardTitle className="text-destructive">Delete Session?</CardTitle>
+                <CardDescription>
+                  This action cannot be undone. This will permanently delete:
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="text-sm text-gray-400 list-disc list-inside space-y-1">
+                  <li>The session and all conversation history</li>
+                  <li>All transcripts and messages</li>
+                  <li>Any expert reviews for this session</li>
+                  <li>The final report</li>
+                </ul>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Yes, Delete Session'
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {hasExistingReview && (
           <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
@@ -477,6 +550,26 @@ function StarIcon({ className, filled }: { className?: string; filled: boolean }
       strokeLinejoin="round"
     >
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
   );
 }
