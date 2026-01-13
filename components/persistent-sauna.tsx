@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { SaunaBuilding } from './sauna-building';
 import { useUI } from './ui-provider';
 
@@ -8,10 +9,14 @@ import { useUI } from './ui-provider';
  * A global component that displays the symbolic sauna building.
  * It stays persistent across pages but handles its own visibility/animations
  * based on the global UI state.
+ * Hidden on admin pages where a simpler UI is preferred.
  */
 export function PersistentSauna() {
     const { isSaunaVisible, saunaPhase } = useUI();
+    const pathname = usePathname();
 
+    // Hide on admin pages
+    if (pathname?.startsWith('/admin')) return null;
     if (saunaPhase === 'hidden') return null;
 
     return (

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { getSessionForReview, submitExpertReview, deleteSession } from '@/lib/api';
+import { getSessionForReview, submitExpertReview, deleteSession, translateText } from '@/lib/api';
 import { toast } from 'sonner';
 import type { SessionReviewData, QuestionReviewInput, ExpertReviewInput } from '@/lib/types';
 
@@ -39,6 +39,8 @@ export default function SessionReviewPage() {
     completenessRating: 3,
     whatCouldBeBetter: '',
   });
+  const [translatedReport, setTranslatedReport] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   // Load session data
   useEffect(() => {
@@ -181,6 +183,23 @@ export default function SessionReviewPage() {
     }
   }, [sessionId, router]);
 
+  // Handle report translation
+  const handleTranslateReport = useCallback(async (targetLang: 'en' | 'ru') => {
+    if (!sessionData?.final_report) return;
+
+    setIsTranslating(true);
+    try {
+      const translated = await translateText(sessionData.final_report, targetLang);
+      setTranslatedReport(translated);
+      toast.success(`Report translated to ${targetLang.toUpperCase()}`);
+    } catch (err) {
+      console.error('Failed to translate report:', err);
+      toast.error('Failed to translate report');
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [sessionData?.final_report]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -292,51 +311,6 @@ export default function SessionReviewPage() {
           </div>
         )}
 
-        {/* Reviewer Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Reviewer Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm text-gray-400 block mb-1">Your Name (optional)</label>
-              <input
-                type="text"
-                value={reviewerName}
-                onChange={(e) => setReviewerName(e.target.value)}
-                placeholder="Expert reviewer name..."
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
-                disabled={hasExistingReview}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400 block mb-2">Overall Rating</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => !hasExistingReview && setOverallRating(star)}
-                    className={`p-2 transition-colors ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
-                    disabled={hasExistingReview}
-                  >
-                    <StarIcon className="w-8 h-8" filled={star <= overallRating} />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-gray-400 block mb-1">Overall Comments</label>
-              <Textarea
-                value={overallComments}
-                onChange={(e) => setOverallComments(e.target.value)}
-                placeholder="General feedback about this interview session..."
-                className="min-h-[100px]"
-                disabled={hasExistingReview}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Questions & Answers Review */}
         <Card>
           <CardHeader>
@@ -427,10 +401,41 @@ export default function SessionReviewPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Translation buttons */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Translate report:</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTranslateReport('en')}
+                  disabled={isTranslating}
+                >
+                  {isTranslating ? <LoadingSpinner className="w-3 h-3" /> : 'EN'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTranslateReport('ru')}
+                  disabled={isTranslating}
+                >
+                  {isTranslating ? <LoadingSpinner className="w-3 h-3" /> : 'RU'}
+                </Button>
+                {translatedReport && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTranslatedReport(null)}
+                    className="text-gray-400"
+                  >
+                    Show Original (LT)
+                  </Button>
+                )}
+              </div>
+
               {/* Report Preview */}
               <div className="p-4 bg-white/5 rounded-lg border border-white/10 max-h-[400px] overflow-y-auto">
                 <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
-                  {sessionData.final_report}
+                  {translatedReport || sessionData.final_report}
                 </pre>
               </div>
 
@@ -484,6 +489,54 @@ export default function SessionReviewPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Overall Evaluation - At the end, before submit */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Overall Evaluation</CardTitle>
+            <CardDescription>
+              Rate the overall interview session after reviewing all Q&A and the report
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-400 block mb-1">Your Name (optional)</label>
+              <input
+                type="text"
+                value={reviewerName}
+                onChange={(e) => setReviewerName(e.target.value)}
+                placeholder="Expert reviewer name..."
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                disabled={hasExistingReview}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 block mb-2">Overall Rating</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => !hasExistingReview && setOverallRating(star)}
+                    className={`p-2 transition-colors ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
+                    disabled={hasExistingReview}
+                  >
+                    <StarIcon className="w-8 h-8" filled={star <= overallRating} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 block mb-1">Overall Comments</label>
+              <Textarea
+                value={overallComments}
+                onChange={(e) => setOverallComments(e.target.value)}
+                placeholder="General feedback about this interview session..."
+                className="min-h-[100px]"
+                disabled={hasExistingReview}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Submit Button */}
         {!hasExistingReview && (

@@ -87,6 +87,9 @@ export default function AdminPage() {
   const [newVersionInput, setNewVersionInput] = useState('');
   const [approverName, setApproverName] = useState('');
 
+  // Theme state
+  const [isDarkTheme, setIsDarkTheme] = useState(true);
+
   // Check if already authenticated
   useEffect(() => {
     const storedKey = typeof window !== 'undefined' ? localStorage.getItem('admin_key') : null;
@@ -96,6 +99,30 @@ export default function AdminPage() {
       setAuthState('not_authenticated');
       setShowAuthDialog(true);
     }
+  }, []);
+
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin_theme');
+    if (savedTheme === 'light') {
+      setIsDarkTheme(false);
+      document.documentElement.classList.add('light');
+    }
+  }, []);
+
+  // Toggle theme
+  const toggleTheme = useCallback(() => {
+    setIsDarkTheme((prev) => {
+      const newTheme = !prev;
+      if (newTheme) {
+        document.documentElement.classList.remove('light');
+        localStorage.setItem('admin_theme', 'dark');
+      } else {
+        document.documentElement.classList.add('light');
+        localStorage.setItem('admin_theme', 'light');
+      }
+      return newTheme;
+    });
   }, []);
 
   // Handle authentication
@@ -559,15 +586,30 @@ risk_rules:
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Admin Panel</h1>
-              <p className="text-muted-foreground">
-                Manage brain configuration, report settings, and feedback
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <SaunaIcon className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Pirtis Admin</h1>
+                <p className="text-muted-foreground text-sm">
+                  Configuration, feedback, expert reviews & skill evolution
+                </p>
+              </div>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                title={isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkTheme ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+              </Button>
+              <Button variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -1349,6 +1391,45 @@ function BrainIcon({ className }: { className?: string }) {
     <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.54" />
       <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.54" />
+    </svg>
+  );
+}
+
+function SaunaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Simple house with steam */}
+      <path d="M3 21h18" />
+      <path d="M5 21V11l7-7 7 7v10" />
+      <path d="M9 21v-6h6v6" />
+      {/* Steam lines */}
+      <path d="M12 3v-1" strokeDasharray="2 2" />
+      <path d="M9 4v-2" strokeDasharray="2 2" />
+      <path d="M15 4v-2" strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
     </svg>
   );
 }

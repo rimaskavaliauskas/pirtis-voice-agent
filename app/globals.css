@@ -46,20 +46,20 @@
 
 :root {
   --radius: 0.75rem;
-  
-  /* Deep Slate "Sauna Night" Background */
-  --background: oklch(0.12 0.03 260); 
+
+  /* Deep Slate "Sauna Night" Background - Dark Theme (default) */
+  --background: oklch(0.12 0.03 260);
   --foreground: oklch(0.95 0.01 60);
 
   /* Glass Effects */
   --card: oklch(0.16 0.03 260 / 0.5); /* translucent slate */
   --card-foreground: oklch(0.95 0.01 60);
-  
+
   --popover: oklch(0.16 0.03 260 / 0.9);
   --popover-foreground: oklch(0.95 0.01 60);
 
   /* Warm Amber Primary */
-  --primary: oklch(0.70 0.16 55); 
+  --primary: oklch(0.70 0.16 55);
   --primary-foreground: oklch(0.12 0.03 260);
 
   --secondary: oklch(0.22 0.04 260);
@@ -93,6 +93,44 @@
   --sidebar-ring: oklch(0.70 0.16 55);
 }
 
+/* Light Theme */
+.light {
+  --background: oklch(0.98 0.01 60);
+  --foreground: oklch(0.15 0.03 260);
+
+  --card: oklch(1 0 0 / 0.8);
+  --card-foreground: oklch(0.15 0.03 260);
+
+  --popover: oklch(1 0 0 / 0.95);
+  --popover-foreground: oklch(0.15 0.03 260);
+
+  --primary: oklch(0.55 0.18 55);
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.95 0.01 260);
+  --secondary-foreground: oklch(0.25 0.03 260);
+
+  --muted: oklch(0.93 0.01 260);
+  --muted-foreground: oklch(0.45 0.02 260);
+
+  --accent: oklch(0.95 0.02 55);
+  --accent-foreground: oklch(0.25 0.03 260);
+
+  --destructive: oklch(0.55 0.2 25);
+  --border: oklch(0.85 0.02 260);
+  --input: oklch(0.90 0.01 260);
+  --ring: oklch(0.55 0.18 55 / 0.5);
+
+  --sidebar: oklch(0.96 0.01 260);
+  --sidebar-foreground: oklch(0.15 0.03 260);
+  --sidebar-primary: oklch(0.55 0.18 55);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.93 0.01 260);
+  --sidebar-accent-foreground: oklch(0.25 0.03 260);
+  --sidebar-border: oklch(0.85 0.02 260);
+  --sidebar-ring: oklch(0.55 0.18 55);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -100,10 +138,18 @@
   body {
     @apply bg-background text-foreground;
     /* optional subtle gradient overlay could go here */
-    background-image: 
+    background-image:
       radial-gradient(circle at 50% 0%, oklch(0.7 0.16 55 / 0.15), transparent 60%),
       radial-gradient(circle at 90% 90%, oklch(0.6 0.2 280 / 0.1), transparent 50%);
     background-attachment: fixed;
+  }
+
+  /* Light theme removes dark gradients */
+  .light body,
+  body.light {
+    background-image:
+      radial-gradient(circle at 50% 0%, oklch(0.55 0.18 55 / 0.1), transparent 60%),
+      radial-gradient(circle at 90% 90%, oklch(0.6 0.2 280 / 0.05), transparent 50%);
   }
 }
 
