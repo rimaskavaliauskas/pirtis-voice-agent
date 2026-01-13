@@ -14,7 +14,9 @@
       "Bash(scp:*)",
       "Bash(powershell -Command \"$body = @{transcripts = @\\(@{question_id = ''Q_R1_EXPERIENCE''; text = ''Norime statyti pirti prie ezero. Planuojame naudoti seimai ir draugams, apie 6-8 zmones.''}\\)} | ConvertTo-Json -Depth 3; Invoke-RestMethod -Uri ''http://65.108.246.252:8000/session/ae29a0ba-b055-4f44-9f5a-40c5b6af0892/answer'' -Method Post -Body $body -ContentType ''application/json'' | ConvertTo-Json -Depth 5\")",
       "Bash(git pull:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(powershell -Command:*)",
+      "mcp__context7__query-docs"
     ]
   }
 }

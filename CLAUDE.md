@@ -152,10 +152,20 @@ journalctl -u agent-brain -f
 - **Test assertions**: Drift when UI text changes - update `__tests__/` assertions to match component implementation
 - **Backend file edits**: Use `scp` to upload Python scripts, then run remotely - avoids shell escaping issues with heredocs
 - **Function evolution**: Use `_v2` suffix for backend function updates to avoid breaking existing callers during transition
-- **PostgreSQL jsonb via asyncpg**: Returns Python dicts, not strings. Check `isinstance(row[n], dict)` before `json.loads()`
-- **LLM fallback triggers**: Include 503/UNAVAILABLE/overloaded in fallback conditions, not just 429 quota errors
-- **asyncpg array params**: Need explicit type casting in SQL: `ANY(:ids::int[])` not `ANY(:ids)`
 - **Next.js SSR hydration**: `usePathname()` returns null on server - wrap conditional rendering with `const [mounted, setMounted] = useState(false)` pattern
+
+## SQLAlchemy + asyncpg Patterns
+
+These patterns are CRITICAL for backend PostgreSQL operations:
+
+| Issue | Wrong | Correct |
+|-------|-------|---------|
+| Type casting | `:param::jsonb` | `CAST(:param AS jsonb)` |
+| Array params | `ANY(:ids)` | `ANY(CAST(:ids AS int[]))` |
+| jsonb columns | `json.loads(row[n])` | `row[n] if isinstance(row[n], dict) else json.loads(row[n])` |
+| Same param twice | `CASE WHEN :p ... :p` | Calculate in Python, pass separate params |
+
+**Why**: SQLAlchemy uses `:name` for params, conflicting with PostgreSQL's `::` cast. asyncpg returns jsonb as dicts and can't infer array types.
 
 ## i18n Translation Patterns
 
