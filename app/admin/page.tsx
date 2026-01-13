@@ -86,6 +86,7 @@ export default function AdminPage() {
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set());
   const [newVersionInput, setNewVersionInput] = useState('');
   const [approverName, setApproverName] = useState('');
+  const [creatingVersion, setCreatingVersion] = useState(false);
 
   // Theme state
   const [isDarkTheme, setIsDarkTheme] = useState(true);
@@ -490,6 +491,7 @@ risk_rules:
       return;
     }
 
+    setCreatingVersion(true);
     try {
       const result = await createSkillVersionFromRules(
         newVersionInput,
@@ -503,6 +505,8 @@ risk_rules:
     } catch (error) {
       console.error('Failed to create skill version:', error);
       toast.error('Failed to create skill version');
+    } finally {
+      setCreatingVersion(false);
     }
   }, [newVersionInput, selectedRules, approverName, loadSkillData]);
 
@@ -1248,9 +1252,16 @@ risk_rules:
                       </div>
                       <Button
                         onClick={handleCreateSkillVersion}
-                        disabled={selectedRules.size === 0 || !newVersionInput}
+                        disabled={selectedRules.size === 0 || !newVersionInput || creatingVersion}
                       >
-                        Create Version
+                        {creatingVersion ? (
+                          <>
+                            <LoadingSpinner className="w-4 h-4 mr-2" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create Version'
+                        )}
                       </Button>
                     </div>
                   </CardContent>
