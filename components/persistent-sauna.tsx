@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { SaunaBuilding } from './sauna-building';
 import { useUI } from './ui-provider';
@@ -14,6 +14,15 @@ import { useUI } from './ui-provider';
 export function PersistentSauna() {
     const { isSaunaVisible, saunaPhase } = useUI();
     const pathname = usePathname();
+    const [mounted, setMounted] = useState(false);
+
+    // Wait for client-side mount to avoid hydration issues
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Don't render until mounted (prevents hydration mismatch)
+    if (!mounted) return null;
 
     // Hide on admin pages
     if (pathname?.startsWith('/admin')) return null;
