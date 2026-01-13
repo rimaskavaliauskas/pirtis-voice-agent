@@ -341,6 +341,30 @@ export function clearAdminKey(): void {
 }
 
 /**
+ * Verify admin key against the backend
+ * Returns true if valid, throws ApiError if invalid
+ */
+export async function verifyAdminKey(key: string): Promise<boolean> {
+  const sanitized = key.replace(/[^\x00-\x7F]/g, '').trim();
+
+  const response = await fetch(`${API_BASE_URL}/brain/config/verify`, {
+    method: 'GET',
+    headers: {
+      [ADMIN_KEY_HEADER]: sanitized,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new ApiError('Invalid admin key', 403);
+    }
+    throw new ApiError('Verification failed', response.status);
+  }
+
+  return true;
+}
+
+/**
  * Export current brain config as YAML
  */
 export async function exportBrainConfig(): Promise<BrainConfigExportResponse> {

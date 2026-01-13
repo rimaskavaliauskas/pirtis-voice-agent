@@ -78,7 +78,9 @@ export const lt = {
     downloadTranslation: "Atsisiųsti vertimą",
     translating: "Verčiama...",
     loading: "Įkeliama jūsų ataskaita...",
-    sessionId: "Sesijos ID: {id}"
+    sessionId: "Sesijos ID: {id}",
+    emailSent: "Pilna ataskaita išsiųsta jūsų el. paštu",
+    sentTo: "Išsiųsta: {email}"
   },
   report: {
     title: "Interviu ataskaita",

@@ -19,6 +19,7 @@ import {
   importBrainConfig,
   setAdminKey,
   clearAdminKey,
+  verifyAdminKey,
   getReportFooter,
   setReportFooter,
   listFeedback,
@@ -127,16 +128,33 @@ export default function AdminPage() {
   }, []);
 
   // Handle authentication
-  const handleAuthenticate = useCallback(() => {
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleAuthenticate = useCallback(async () => {
     if (!adminKeyInput.trim()) {
       toast.error('Please enter an admin key');
       return;
     }
 
-    setAdminKey(adminKeyInput.trim());
-    setAuthState('authenticated');
-    setShowAuthDialog(false);
-    toast.success('Authenticated successfully');
+    setAuthState('loading');
+    setAuthError(null);
+
+    try {
+      // Verify key against backend before granting access
+      await verifyAdminKey(adminKeyInput.trim());
+
+      // Key is valid - store it and grant access
+      setAdminKey(adminKeyInput.trim());
+      setAuthState('authenticated');
+      setShowAuthDialog(false);
+      toast.success('Authenticated successfully');
+    } catch (error) {
+      // Key is invalid
+      setAuthState('not_authenticated');
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(message);
+      toast.error(message);
+    }
   }, [adminKeyInput]);
 
   // Handle logout
@@ -570,7 +588,7 @@ risk_rules:
               Enter your admin key to access the configuration panel.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-3">
             <input
               type="password"
               value={adminKeyInput}
@@ -578,13 +596,19 @@ risk_rules:
               placeholder="Enter admin key..."
               className="w-full px-3 py-2 border rounded-md"
               onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
+              disabled={authState === 'loading'}
             />
+            {authError && (
+              <p className="text-sm text-red-500">{authError}</p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => router.push('/')}>
+            <Button variant="outline" onClick={() => router.push('/')} disabled={authState === 'loading'}>
               Cancel
             </Button>
-            <Button onClick={handleAuthenticate}>Authenticate</Button>
+            <Button onClick={handleAuthenticate} disabled={authState === 'loading'}>
+              {authState === 'loading' ? 'Verifying...' : 'Authenticate'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

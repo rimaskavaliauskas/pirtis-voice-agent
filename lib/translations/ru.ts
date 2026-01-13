@@ -78,7 +78,9 @@ export const ru = {
     downloadTranslation: "Скачать перевод",
     translating: "Перевод...",
     loading: "Загрузка вашего отчета...",
-    sessionId: "ID сессии: {id}"
+    sessionId: "ID сессии: {id}",
+    emailSent: "Полный отчет отправлен на вашу почту",
+    sentTo: "Отправлено на: {email}"
   },
   report: {
     title: "Отчет интервью",

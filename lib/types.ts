@@ -144,18 +144,21 @@ export interface FinalizeRequest {
 
 export interface FinalizeResponse {
   session_id: string;
-  final_markdown: string;
+  final_markdown: string;  // Contains summary for client (Sections I-III)
   slots: Record<string, Slot>;
   risk_flags: RiskFlag[];
+  email_sent?: boolean;  // True if full report was sent to email
 }
 
 // GET /session/{id}/results
 export interface ResultsResponse {
   session_id: string;
-  final_markdown: string;
+  final_markdown: string;  // Contains summary for client (Sections I-III)
   slots: Record<string, Slot>;
   risk_flags: RiskFlag[];
   completed_at: string | null;
+  email_sent?: boolean;  // True if full report was sent to email
+  contact_email?: string;  // Email address report was sent to
 }
 
 // ============================================

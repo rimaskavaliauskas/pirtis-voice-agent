@@ -78,7 +78,9 @@ export const en = {
     downloadTranslation: "Download Translation",
     translating: "Translating...",
     loading: "Loading your report...",
-    sessionId: "Session ID: {id}"
+    sessionId: "Session ID: {id}",
+    emailSent: "Full report has been sent to your email",
+    sentTo: "Sent to: {email}"
   },
   report: {
     title: "Interview Report",

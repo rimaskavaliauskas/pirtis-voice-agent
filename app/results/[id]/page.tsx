@@ -29,6 +29,8 @@ export default function ResultsPage() {
   const [state, setState] = useState<PageState>('loading');
   const [markdown, setMarkdown] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState<boolean>(false);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
 
   // Translation state
   const [translatedMarkdown, setTranslatedMarkdown] = useState<string | null>(null);
@@ -49,6 +51,8 @@ export default function ResultsPage() {
       try {
         const response = await getResults(sessionId);
         setMarkdown(response.final_markdown);
+        setEmailSent(response.email_sent || false);
+        setContactEmail(response.contact_email || null);
         setState('ready');
       } catch (err) {
         console.error('Failed to load results:', err);
@@ -214,6 +218,25 @@ export default function ResultsPage() {
             {t('results.reportReady')}
           </p>
         </div>
+
+        {/* Email Sent Notice */}
+        {emailSent && (
+          <Card className="glass-panel border-green-500/30 bg-green-500/10">
+            <CardContent className="pt-4 flex items-center gap-3">
+              <EmailIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-400">
+                  {t('results.emailSent')}
+                </p>
+                {contactEmail && (
+                  <p className="text-xs text-green-500/80">
+                    {t('results.sentTo', { email: contactEmail })}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Translation Controls */}
         <Card className="glass-panel border-white/5">
@@ -391,6 +414,24 @@ function ErrorIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" x2="12" y1="8" y2="12" />
       <line x1="12" x2="12.01" y1="16" y2="16" />
+    </svg>
+  );
+}
+
+function EmailIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
     </svg>
   );
 }
