@@ -368,7 +368,18 @@ risk_rules:
       setExpertReviewStats(stats);
     } catch (error) {
       console.error('Failed to load sessions:', error);
-      toast.error('Failed to load sessions data');
+      // Show specific error message
+      if (error instanceof Error) {
+        if (error.message.includes('401') || error.message.includes('Admin key')) {
+          toast.error('Admin key required. Please logout and login again.');
+        } else if (error.message.includes('403') || error.message.includes('Invalid admin')) {
+          toast.error('Invalid admin key. Please logout and login with correct key.');
+        } else {
+          toast.error(`Failed to load sessions: ${error.message}`);
+        }
+      } else {
+        toast.error('Failed to load sessions data');
+      }
     } finally {
       setSessionsLoading(false);
     }
