@@ -416,17 +416,21 @@ risk_rules:
   const loadSkillData = useCallback(async () => {
     setSkillLoading(true);
     try {
+      console.log('Loading skill data...');
       const [versions, pending, approved] = await Promise.all([
         listSkillVersions(),
         getPendingRules(),
         getApprovedRules(),
       ]);
+      console.log('Skill versions loaded:', versions.length);
+      console.log('Pending rules:', pending.length);
+      console.log('Approved rules:', approved.length);
       setSkillVersions(versions);
       setPendingRules(pending);
       setApprovedRules(approved);
     } catch (error) {
       console.error('Failed to load skill data:', error);
-      toast.error('Failed to load skill data');
+      toast.error(`Failed to load skill data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSkillLoading(false);
     }
