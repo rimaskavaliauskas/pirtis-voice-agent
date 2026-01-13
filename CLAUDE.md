@@ -136,7 +136,7 @@ journalctl -u agent-brain -f
 - **Backend shared**: VPS serves multiple frontend projects via same API endpoints
 - **Auto-deploy**: GitHub push to master triggers Vercel deployment automatically
 - **Backend proxy**: Vercel rewrites `/api/backend/*` to `http://65.108.246.252:8000/*` (see vercel.json)
-- **LLM fallback**: Gemini -> Claude on 429 errors
+- **LLM fallback**: Gemini -> Claude on 429/503/UNAVAILABLE errors
 - **Whisper model**: "small" for speed (was "medium")
 - **Reports**: Stored in Lithuanian, translated on demand
 - **Admin key**: Stored in localStorage on frontend
@@ -152,6 +152,10 @@ journalctl -u agent-brain -f
 - **Test assertions**: Drift when UI text changes - update `__tests__/` assertions to match component implementation
 - **Backend file edits**: Use `scp` to upload Python scripts, then run remotely - avoids shell escaping issues with heredocs
 - **Function evolution**: Use `_v2` suffix for backend function updates to avoid breaking existing callers during transition
+- **PostgreSQL jsonb via asyncpg**: Returns Python dicts, not strings. Check `isinstance(row[n], dict)` before `json.loads()`
+- **LLM fallback triggers**: Include 503/UNAVAILABLE/overloaded in fallback conditions, not just 429 quota errors
+- **asyncpg array params**: Need explicit type casting in SQL: `ANY(:ids::int[])` not `ANY(:ids)`
+- **Next.js SSR hydration**: `usePathname()` returns null on server - wrap conditional rendering with `const [mounted, setMounted] = useState(false)` pattern
 
 ## i18n Translation Patterns
 
