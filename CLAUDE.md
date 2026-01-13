@@ -45,14 +45,22 @@ Next.js 16 + shadcn/ui    -->  FastAPI + Uvicorn
 ## Backend Endpoints
 
 ```
-POST /session/start              - Create session, get first 3 questions
+# Session
+POST /session/start              - Create session (quick or precise mode)
 POST /session/{id}/transcribe    - Whisper STT
 POST /session/{id}/answer        - LLM slot extraction, next questions
 POST /session/{id}/finalize      - Generate report
 POST /session/{id}/translate     - Translate report (EN/RU)
 GET  /session/{id}/download      - Download markdown
+
+# Brain config
 GET  /brain/config/export        - Export YAML config
 POST /brain/config/import        - Import YAML config
+
+# Skill evolution (X-Admin-Key header required)
+GET  /admin/skill/versions       - List skill versions
+POST /admin/skill/rules/generate - Generate rules from expert feedback
+POST /admin/skill/versions/create - Create new skill version from approved rules
 ```
 
 ## Key Files
@@ -68,8 +76,11 @@ POST /brain/config/import        - Import YAML config
 ### Backend (VPS `/opt/agent-brain/`)
 - `app/main.py` - FastAPI app + CORS
 - `app/routers/session.py` - Session endpoints
-- `app/routers/admin.py` - Admin endpoints
+- `app/routers/admin.py` - Admin + expert review endpoints
+- `app/routers/skill_admin.py` - Skill evolution endpoints
 - `app/services/llm.py` - Gemini + Claude fallback
+- `app/services/skill.py` - Skill version CRUD + caching
+- `app/services/skill_evolution.py` - Rule generation from expert feedback
 - `app/services/whisper.py` - STT transcription
 - `app/prompts/templates.py` - LLM prompts
 
@@ -101,11 +112,22 @@ journalctl -u agent-brain -f
 
 ## Important Notes
 
-- Backend uses LLM fallback: Gemini -> Claude on 429 errors
+- Backend uses LLM fallback: Gemini -> Claude on 429/503 errors
 - Whisper model is "small" for speed (was "medium")
 - Reports are stored in Lithuanian, translated on demand
 - Admin key stored in localStorage on frontend
 - CORS allows Vercel frontend + localhost:3000
+
+## SQLAlchemy + asyncpg Patterns (Backend)
+
+| Issue | Wrong | Correct |
+|-------|-------|---------|
+| Type casting | `:param::jsonb` | `CAST(:param AS jsonb)` |
+| Array params | `ANY(:ids)` | `ANY(CAST(:ids AS int[]))` |
+| jsonb columns | `json.loads(row[n])` | Check `isinstance(row[n], dict)` first |
+| Same param twice | `CASE WHEN :p ... :p` | Calculate in Python, pass separate params |
+
+**Why**: SQLAlchemy `:name` conflicts with PostgreSQL `::` cast. asyncpg returns jsonb as dicts.
 
 ## Protected Files (DO NOT MODIFY)
 
