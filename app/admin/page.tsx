@@ -92,15 +92,27 @@ export default function AdminPage() {
   // Theme state
   const [isDarkTheme, setIsDarkTheme] = useState(true);
 
-  // Check if already authenticated
+  // Check if already authenticated - verify stored key against backend
   useEffect(() => {
-    const storedKey = typeof window !== 'undefined' ? localStorage.getItem('admin_key') : null;
-    if (storedKey) {
-      setAuthState('authenticated');
-    } else {
-      setAuthState('not_authenticated');
-      setShowAuthDialog(true);
-    }
+    const checkStoredKey = async () => {
+      const storedKey = typeof window !== 'undefined' ? localStorage.getItem('admin_key') : null;
+      if (storedKey) {
+        try {
+          // Verify the stored key is still valid
+          await verifyAdminKey(storedKey);
+          setAuthState('authenticated');
+        } catch {
+          // Stored key is invalid - clear it and show auth dialog
+          clearAdminKey();
+          setAuthState('not_authenticated');
+          setShowAuthDialog(true);
+        }
+      } else {
+        setAuthState('not_authenticated');
+        setShowAuthDialog(true);
+      }
+    };
+    checkStoredKey();
   }, []);
 
   // Initialize theme from localStorage
