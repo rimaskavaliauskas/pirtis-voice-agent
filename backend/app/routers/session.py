@@ -1,7 +1,7 @@
 """
 Session Router - Interview Session Management
 
-Handles the interview flow: start, transcribe, answer, finalize.
+Handles the interview flow: start, transcribe, answer, finalize, feedback.
 """
 
 import json
@@ -9,7 +9,6 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,18 +19,96 @@ from app.models import (
     SubmitAnswerRequest,
     SubmitAnswerResponse,
     TranscribeResponse,
+    FinalizeRequest,
     FinalizeResponse,
+    FeedbackSubmission,
+    FeedbackResponse,
+    FeedbackStats,
     Question,
     SlotValue,
+    SlotStatus,
     AgentState,
+    ContactInfo,
 )
 from app.services.brain import brain_config
 from app.services.whisper import transcribe_audio
-from app.services.llm import extract_slots, generate_report
+from app.services.llm import extract_slots, generate_report, generate_clarification_question, generate_followup_question_v2
+from app.services.skill import get_skill_for_prompts
+from app.services.llm_v2 import generate_followup_question_v3
 from app.services.scoring import select_next_questions
 from app.services.risk import evaluate_risk_rules
 
 router = APIRouter()
+
+
+def calculate_slot_status(slots: dict, slot_definitions: list) -> list[SlotStatus]:
+    """Calculate slot status for frontend display."""
+    result = []
+    for slot_def in slot_definitions:
+        key = slot_def.get("slot_key")
+        label = slot_def.get("label_lt", key)
+        slot_data = slots.get(key, {})
+
+        confidence = slot_data.get("confidence", 0.0)
+        value = slot_data.get("value")
+
+        if value is not None and confidence >= 0.7:
+            status = "filled"
+        elif value is not None and confidence >= 0.4:
+            status = "partial"
+        else:
+            status = "empty"
+
+        result.append(SlotStatus(
+            slot_key=key,
+            label=label,
+            status=status,
+            confidence=confidence,
+        ))
+
+    return result
+
+
+def calculate_progress_percent(slots: dict, slot_definitions: list) -> int:
+    """
+    Calculate overall interview completion percentage.
+
+    Required slots (is_required=True) contribute 60% weight.
+    Optional slots contribute 40% weight.
+    Confidence affects fill level: >0.7 = 100%, 0.4-0.7 = 50%, <0.4 = 0%
+    """
+    required_slots = [s for s in slot_definitions if s.get("is_required", False)]
+    optional_slots = [s for s in slot_definitions if not s.get("is_required", False)]
+
+    def slot_fill_level(slot_key: str) -> float:
+        slot_data = slots.get(slot_key, {})
+        value = slot_data.get("value")
+        confidence = slot_data.get("confidence", 0.0)
+
+        if value is None:
+            return 0.0
+        elif confidence >= 0.7:
+            return 1.0
+        elif confidence >= 0.4:
+            return 0.5
+        else:
+            return 0.0
+
+    # Calculate required slots progress (60% weight)
+    if required_slots:
+        required_filled = sum(slot_fill_level(s.get("slot_key")) for s in required_slots)
+        required_progress = (required_filled / len(required_slots)) * 0.6
+    else:
+        required_progress = 0.6  # If no required slots, give full credit
+
+    # Calculate optional slots progress (40% weight)
+    if optional_slots:
+        optional_filled = sum(slot_fill_level(s.get("slot_key")) for s in optional_slots)
+        optional_progress = (optional_filled / len(optional_slots)) * 0.4
+    else:
+        optional_progress = 0.4  # If no optional slots, give full credit
+
+    return int((required_progress + optional_progress) * 100)
 
 
 @router.post("/start", response_model=StartSessionResponse)
@@ -42,9 +119,12 @@ async def start_session(
     """
     Start a new interview session.
 
-    Creates a new session in the database and returns the first 3 questions.
+    Creates a new session in the database and returns the first questions.
+    In quick mode: 3 questions at once
+    In precise mode: 1 question at a time
     """
     language = request.language if request else "lt"
+    interview_mode = request.interview_mode if request else "quick"
 
     # Load brain config
     await brain_config.load_all(db)
@@ -58,6 +138,7 @@ async def start_session(
     # Create initial state
     initial_state = {
         "language": language,
+        "interview_mode": interview_mode,
         "round": 1,
         "history": [],
         "slots": initial_slots,
@@ -66,6 +147,8 @@ async def start_session(
         "round_summary": None,
         "asked_question_ids": [],
         "next_questions": [],
+        "contact_info": None,
+        "questions_asked_count": 0,  # Track total questions asked in precise mode
     }
 
     # Insert session into database
@@ -85,7 +168,10 @@ async def start_session(
         for k, v in initial_slots.items()
     }
 
-    # Select first 3 questions
+    # Determine question count based on mode
+    question_count = 1 if interview_mode == "precise" else 3
+
+    # Select first questions
     questions = select_next_questions(
         questions=brain_config.questions,
         slots=slots_for_scoring,
@@ -94,7 +180,8 @@ async def start_session(
         current_round=1,
         weights=brain_config.scoring_weights,
         slot_definitions=brain_config.slots,
-        count=3,
+        skip_rules=brain_config.skip_rules,
+        count=question_count,
     )
 
     # Update state with selected questions
@@ -102,8 +189,7 @@ async def start_session(
         {"id": q.id, "text": q.text, "round_hint": q.round_hint}
         for q in questions
     ]
-    # Track asked questions and agent messages for context
-    initial_state["asked_question_ids"] = [q.id for q in questions]
+    # Add initial questions to history for expert review
     for q in questions:
         initial_state["history"].append({
             "role": "agent",
@@ -121,6 +207,7 @@ async def start_session(
         session_id=session_id,
         round=1,
         questions=questions,
+        interview_mode=interview_mode,
     )
 
 
@@ -145,18 +232,13 @@ async def transcribe_audio_endpoint(
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    session_language = language or row[0] or "lt"
+    session_language = language or row[0] or None  # Auto-detect if not specified
 
     # Read audio data
     audio_data = await audio.read()
 
     if len(audio_data) == 0:
         raise HTTPException(status_code=400, detail="Empty audio file")
-    # Guardrails on size
-    from app.config import get_settings
-    settings = get_settings()
-    if len(audio_data) > settings.max_audio_bytes:
-        raise HTTPException(status_code=400, detail="Audio file too large")
 
     # Transcribe
     try:
@@ -165,8 +247,6 @@ async def transcribe_audio_endpoint(
             language=session_language,
             filename=audio.filename,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
@@ -187,6 +267,7 @@ async def submit_answer(
     Submit confirmed transcripts for the current round.
 
     Extracts slots using LLM, evaluates risks, selects next questions.
+    In precise mode, may return clarification question if confidence is low.
     """
     # Load session
     result = await db.execute(
@@ -199,18 +280,23 @@ async def submit_answer(
 
     current_round = row[0]
     state = row[1] if isinstance(row[1], dict) else json.loads(row[1])
+    interview_mode = state.get("interview_mode", "quick")
 
     # Load brain config
     await brain_config.load_all(db)
+    # Load skill for enhanced question generation
+    skill_content = None
+    try:
+        skill_content = await get_skill_for_prompts(db)
+        if skill_content and skill_content.get('version'):
+            print(f"Loaded skill v{skill_content['version']} for question generation")
+    except Exception as e:
+        print(f"Warning: Could not load skill: {e}")
+
 
     # Combine all transcripts into one answer
-    # Attach question text for better context
-    question_text_lookup = {
-        q["id"]: q.get("text", "")
-        for q in state.get("next_questions", [])
-    }
     combined_answer = "\n\n".join([
-        f"[{t.question_id}] {question_text_lookup.get(t.question_id, '')} -> {t.text}"
+        f"[{t.question_id}]: {t.text}"
         for t in request.transcripts
     ])
 
@@ -224,6 +310,10 @@ async def submit_answer(
         })
         if t.question_id not in state["asked_question_ids"]:
             state["asked_question_ids"].append(t.question_id)
+
+    # Track questions asked in precise mode
+    if interview_mode == "precise":
+        state["questions_asked_count"] = state.get("questions_asked_count", 0) + len(request.transcripts)
 
     # Extract slots using LLM
     extraction_result = await extract_slots(state, combined_answer)
@@ -254,45 +344,201 @@ async def submit_answer(
     risk_flags = evaluate_risk_rules(slots_for_eval, brain_config.risk_rules)
     state["risk_flags"] = [rf.model_dump() for rf in risk_flags]
 
-    # Determine if complete (round 3 done)
-    is_complete = current_round >= 3
+    # Calculate slot status for frontend
+    slot_status = calculate_slot_status(state["slots"], brain_config.slots)
 
-    if is_complete:
-        # No more questions
-        next_questions = []
-        state["next_questions"] = []
-    else:
-        # Advance to next round
-        next_round = current_round + 1
-        state["round"] = next_round
+    # Calculate progress percentage
+    progress_percent = calculate_progress_percent(state["slots"], brain_config.slots)
 
-        # Select next questions
-        next_questions = select_next_questions(
-            questions=brain_config.questions,
-            slots=slots_for_eval,
-            risk_flags=risk_flags,
-            asked_question_ids=state["asked_question_ids"],
-            current_round=next_round,
-            weights=brain_config.scoring_weights,
-            slot_definitions=brain_config.slots,
-            count=3,
+    # Check if clarification is needed (precise mode only)
+    clarification_question = None
+    confidence_threshold = 0.6
+
+    if interview_mode == "precise" and extraction_result.updated_slots:
+        # Find recently updated slots with low confidence
+        low_confidence_slots = []
+        for slot_key in extraction_result.updated_slots:
+            slot_data = state["slots"].get(slot_key)
+            if slot_data and slot_data["confidence"] < confidence_threshold:
+                low_confidence_slots.append((slot_key, slot_data))
+
+        # Generate clarification for lowest confidence slot
+        if low_confidence_slots:
+            low_confidence_slots.sort(key=lambda x: x[1]["confidence"])
+            slot_key, slot_data = low_confidence_slots[0]
+
+            # Find the original question from history
+            original_question = ""
+            user_answer = ""
+            for h in reversed(state["history"]):
+                if h["role"] == "agent":
+                    original_question = h["text"]
+                    break
+                elif h["role"] == "user":
+                    user_answer = h["text"]
+
+            clarification_question = await generate_clarification_question(
+                slot_key=slot_key,
+                current_value=str(slot_data["value"]),
+                confidence=slot_data["confidence"],
+                original_question=original_question,
+                user_answer=user_answer,
+            )
+
+    # Determine completion logic
+    if interview_mode == "precise":
+        # Precise mode: Continuous flow, no rounds
+        # Complete when: progress >= 85% OR asked 12+ questions OR no more relevant questions
+        questions_asked = state.get("questions_asked_count", 0)
+        max_questions = 12  # Maximum questions in precise mode
+
+        # Check for all required slots filled with high confidence
+        required_slots_filled = all(
+            state["slots"].get(s.get("slot_key"), {}).get("confidence", 0) >= 0.7
+            for s in brain_config.slots if s.get("is_required", False)
         )
 
-        # Track agent questions in history and asked list
-        for q in next_questions:
-            if q.id not in state["asked_question_ids"]:
-                state["asked_question_ids"].append(q.id)
-            state["history"].append({
-                "role": "agent",
-                "question_id": q.id,
-                "text": q.text,
-                "round": next_round,
-            })
+        # More conservative completion: require 90% progress OR 12+ questions
+        # AND minimum 6 questions asked to ensure thorough interview
+        is_complete = (
+            questions_asked >= 6 and (
+                progress_percent >= 90 or
+                questions_asked >= max_questions
+            )
+        )
 
-        state["next_questions"] = [
-            {"id": q.id, "text": q.text, "round_hint": q.round_hint}
-            for q in next_questions
-        ]
+        if is_complete:
+            next_questions = []
+            state["next_questions"] = []
+        else:
+            # First, try AI-generated follow-up question (hybrid approach)
+            ai_followup = None
+
+            # Get session language for multilingual support
+            session_language = state.get("language", "lt")
+
+            # Language-specific role labels
+            role_labels = {
+                "lt": {"consultant": "Konsultantas", "client": "Klientas"},
+                "en": {"consultant": "Consultant", "client": "Client"},
+                "ru": {"consultant": "Консультант", "client": "Клиент"},
+            }.get(session_language, {"consultant": "Consultant", "client": "Client"})
+
+            # Format full conversation history for AI context
+            formatted_history = []
+            for h in state["history"]:
+                if h["role"] == "agent":
+                    formatted_history.append(f"{role_labels['consultant']}: {h['text']}")
+                elif h["role"] == "user":
+                    formatted_history.append(f"{role_labels['client']}: {h['text']}")
+
+            # Try AI generation with full context
+            if formatted_history:
+                # Try skill-enhanced AI generation (v3) if skill is loaded
+                if skill_content:
+                    ai_followup = await generate_followup_question_v3(
+                        conversation_history=formatted_history,
+                        collected_slots=state["slots"],
+                        missing_slots=state.get("unknown_slots", []),
+                        skill_content=skill_content,
+                        language=session_language,
+                    )
+                else:
+                    ai_followup = await generate_followup_question_v2(
+                        conversation_history=formatted_history,
+                        collected_slots=state["slots"],
+                        missing_slots=state.get("unknown_slots", []),
+                    )
+            
+            if ai_followup:
+                # Use AI-generated question
+                ai_question_id = f"AI_FOLLOWUP_{questions_asked}"
+                next_questions = [Question(id=ai_question_id, text=ai_followup)]
+                state["next_questions"] = [
+                    {"id": ai_question_id, "text": ai_followup, "round_hint": None}
+                ]
+                # Add agent question to history for expert review
+                state["history"].append({
+                    "role": "agent",
+                    "question_id": ai_question_id,
+                    "text": ai_followup,
+                    "round": current_round,
+                })
+            else:
+                # Fall back to predefined question selection
+                next_questions = select_next_questions(
+                    questions=brain_config.questions,
+                    slots=slots_for_eval,
+                    risk_flags=risk_flags,
+                    asked_question_ids=state["asked_question_ids"],
+                    current_round=current_round,  # Keep for scoring compatibility
+                    weights=brain_config.scoring_weights,
+                    slot_definitions=brain_config.slots,
+                    skip_rules=brain_config.skip_rules,
+                    count=1,
+                )
+
+                # If no more questions available, complete the interview
+                if not next_questions:
+                    is_complete = True
+
+                state["next_questions"] = [
+                    {"id": q.id, "text": q.text, "round_hint": q.round_hint}
+                    for q in next_questions
+                ]
+                # Add agent questions to history for expert review
+                for q in next_questions:
+                    state["history"].append({
+                        "role": "agent",
+                        "question_id": q.id,
+                        "text": q.text,
+                        "round": current_round,
+                    })
+    else:
+        # Quick mode: Round-based logic (3 rounds x 3 questions)
+        questions_in_round = sum(1 for h in state["history"] if h["round"] == current_round and h["role"] == "user")
+        round_complete = True  # In quick mode, all 3 questions submitted at once
+
+        is_complete = current_round >= 3 and round_complete
+
+        if is_complete:
+            next_questions = []
+            state["next_questions"] = []
+        elif round_complete:
+            # Advance to next round
+            next_round = current_round + 1
+            state["round"] = next_round
+            current_round = next_round
+
+            next_questions = select_next_questions(
+                questions=brain_config.questions,
+                slots=slots_for_eval,
+                risk_flags=risk_flags,
+                asked_question_ids=state["asked_question_ids"],
+                current_round=next_round,
+                weights=brain_config.scoring_weights,
+                slot_definitions=brain_config.slots,
+                skip_rules=brain_config.skip_rules,
+                count=3,
+            )
+
+            state["next_questions"] = [
+                {"id": q.id, "text": q.text, "round_hint": q.round_hint}
+                for q in next_questions
+            ]
+            # Add agent questions to history for expert review (Quick mode)
+            for q in next_questions:
+                state["history"].append({
+                    "role": "agent",
+                    "question_id": q.id,
+                    "text": q.text,
+                    "round": next_round,
+                })
+        else:
+            next_questions = [
+                Question(id=q["id"], text=q["text"], round_hint=q.get("round_hint"))
+                for q in state["next_questions"]
+            ]
 
     # Save updated state
     await db.execute(
@@ -316,22 +562,32 @@ async def submit_answer(
         round_summary=state["round_summary"],
         next_questions=next_questions,
         is_complete=is_complete,
+        clarification_question=clarification_question,
+        slot_status=slot_status,
+        progress_percent=progress_percent,
     )
 
 
 @router.post("/{session_id}/finalize", response_model=FinalizeResponse)
 async def finalize_session(
     session_id: UUID,
+    request: FinalizeRequest = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Finalize the session and generate the final report.
 
     Uses LLM to create a comprehensive Markdown report.
+    - Stores full report in database
+    - Extracts summary (Sections I-III) for client display
+    - Sends full report via email if email provided
     """
+    from app.services.email import send_report_email, extract_report_summary
+    from datetime import datetime
+
     # Load session
     result = await db.execute(
-        text("SELECT state FROM sessions WHERE session_id = :id"),
+        text("SELECT state, language FROM sessions WHERE session_id = :id"),
         {"id": session_id},
     )
     row = result.fetchone()
@@ -339,9 +595,60 @@ async def finalize_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     state = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+    language = row[1] or "lt"
 
-    # Generate report using LLM
-    final_markdown = await generate_report(state)
+    # Extract contact info
+    contact_name = None
+    contact_email = None
+    contact_phone = None
+
+    if request and request.contact_info:
+        contact_info = request.contact_info.model_dump()
+        state["contact_info"] = contact_info
+        contact_name = contact_info.get("name")
+        contact_email = contact_info.get("email")
+        contact_phone = contact_info.get("phone")
+
+    # Load brain config for report footer
+    await brain_config.load_all(db)
+    report_footer = brain_config.get_config_value("report_footer", "")
+
+    # Load skill for enhanced report generation
+    skill_content = None
+    try:
+        skill_content = await get_skill_for_prompts(db)
+        if skill_content and skill_content.get('version'):
+            print(f"Loaded skill v{skill_content['version']} for report generation")
+    except Exception as e:
+        print(f"Warning: Could not load skill for report: {e}")
+
+    # Generate full report using LLM with skill template
+    final_markdown = await generate_report(
+        state,
+        contact_info=state.get("contact_info"),
+        report_footer=report_footer,
+        skill_content=skill_content,
+    )
+
+    # Extract summary (Sections I-III) for client display
+    report_summary = extract_report_summary(final_markdown)
+
+    # Send email if email provided
+    email_sent_at = None
+    if contact_email:
+        try:
+            success = send_report_email(
+                to_email=contact_email,
+                to_name=contact_name or "Klientas",
+                report_markdown=final_markdown,
+                session_id=str(session_id),
+                language=language,
+            )
+            if success:
+                email_sent_at = datetime.now()
+                print(f"Email sent to {contact_email} for session {session_id}")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
 
     # Convert slots to SlotValue objects
     slots = {
@@ -355,22 +662,88 @@ async def finalize_session(
         for rf in state.get("risk_flags", [])
     ]
 
-    # Save report to database
+    # Save to database with all new fields
     await db.execute(
         text("""
             UPDATE sessions
-            SET final_report = :report, completed_at = NOW(), updated_at = NOW()
+            SET final_report = :report,
+                report_summary = :summary,
+                state = :state,
+                contact_name = :contact_name,
+                contact_email = :contact_email,
+                contact_phone = :contact_phone,
+                email_sent_at = :email_sent_at,
+                completed_at = NOW(),
+                updated_at = NOW()
             WHERE session_id = :id
         """),
-        {"report": final_markdown, "id": session_id},
+        {
+            "report": final_markdown,
+            "summary": report_summary,
+            "state": json.dumps(state),
+            "contact_name": contact_name,
+            "contact_email": contact_email,
+            "contact_phone": contact_phone,
+            "email_sent_at": email_sent_at,
+            "id": session_id,
+        },
     )
 
+    # Return summary to client (not full report)
+    # Full report was sent to email and is visible in admin
     return FinalizeResponse(
         session_id=session_id,
-        final_markdown=final_markdown,
+        final_markdown=report_summary,  # Client sees summary only
         slots=slots,
         risk_flags=risk_flags,
+        email_sent=email_sent_at is not None,
     )
+
+
+
+@router.post("/{session_id}/feedback")
+async def submit_feedback(
+    session_id: UUID,
+    request: FeedbackSubmission,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Submit user feedback for a completed session.
+    """
+    # Verify session exists and is completed
+    result = await db.execute(
+        text("SELECT completed_at FROM sessions WHERE session_id = :id"),
+        {"id": session_id},
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if not row[0]:
+        raise HTTPException(status_code=400, detail="Session not yet completed")
+
+    # Check if feedback already exists
+    existing = await db.execute(
+        text("SELECT id FROM feedback WHERE session_id = :id"),
+        {"id": session_id},
+    )
+    if existing.fetchone():
+        raise HTTPException(status_code=400, detail="Feedback already submitted")
+
+    # Insert feedback
+    await db.execute(
+        text("""
+            INSERT INTO feedback (session_id, rating, feedback_text)
+            VALUES (:session_id, :rating, :text)
+        """),
+        {
+            "session_id": session_id,
+            "rating": request.rating,
+            "text": request.feedback_text,
+        },
+    )
+
+    return {"success": True, "message": "Feedback submitted successfully"}
 
 
 @router.get("/{session_id}/state")
@@ -391,6 +764,11 @@ async def get_session_state(
 
     state = row[1] if isinstance(row[1], dict) else json.loads(row[1])
 
+    # Load brain config to calculate slot status and progress
+    await brain_config.load_all(db)
+    slot_status = calculate_slot_status(state.get("slots", {}), brain_config.slots)
+    progress_percent = calculate_progress_percent(state.get("slots", {}), brain_config.slots)
+
     return {
         "session_id": str(session_id),
         "round": row[0],
@@ -398,6 +776,9 @@ async def get_session_state(
         "final_report": row[2],
         "created_at": row[3].isoformat() if row[3] else None,
         "completed_at": row[4].isoformat() if row[4] else None,
+        "interview_mode": state.get("interview_mode", "quick"),
+        "slot_status": [s.model_dump() for s in slot_status],
+        "progress_percent": progress_percent,
     }
 
 
@@ -408,27 +789,40 @@ async def get_session_results(
 ):
     """
     Get the final results of a completed session.
+
+    Returns the report summary (Sections I-III) for client display.
+    Full report is sent via email and visible in admin panel.
     """
     result = await db.execute(
-        text("SELECT state, final_report, completed_at FROM sessions WHERE session_id = :id"),
+        text("""
+            SELECT state, final_report, report_summary, completed_at, email_sent_at, contact_email
+            FROM sessions WHERE session_id = :id
+        """),
         {"id": session_id},
     )
     row = result.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if not row[2]:
+    if not row[3]:  # completed_at
         raise HTTPException(status_code=400, detail="Session not yet completed")
 
     state = row[0] if isinstance(row[0], dict) else json.loads(row[0])
 
+    # Use summary if available, otherwise fall back to full report
+    display_markdown = row[2] if row[2] else row[1]
+
     return {
         "session_id": str(session_id),
-        "final_markdown": row[1],
+        "final_markdown": display_markdown,
         "slots": state.get("slots", {}),
         "risk_flags": state.get("risk_flags", []),
-        "completed_at": row[2].isoformat() if row[2] else None,
+        "completed_at": row[3].isoformat() if row[3] else None,
+        "email_sent": row[4] is not None,  # email_sent_at
+        "contact_email": row[5],  # For showing "sent to..." message
     }
+
+
 
 
 @router.get("/{session_id}/download")
@@ -437,19 +831,28 @@ async def download_report(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Download the final markdown report as text.
+    Download the final report as a Markdown file.
     """
+    from fastapi.responses import Response
+
     result = await db.execute(
-        text("SELECT final_report FROM sessions WHERE session_id = :id"),
+        text("SELECT final_report, completed_at FROM sessions WHERE session_id = :id"),
         {"id": session_id},
     )
     row = result.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
-    if not row[0]:
-        raise HTTPException(status_code=400, detail="Session not yet completed")
 
-    return PlainTextResponse(row[0], media_type="text/markdown")
+    if not row[0]:
+        raise HTTPException(status_code=400, detail="Report not yet generated")
+
+    return Response(
+        content=row[0],
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": f'attachment; filename="pirtis-report-{str(session_id)[:8]}.md"'
+        },
+    )
 
 
 @router.post("/{session_id}/translate")
@@ -459,20 +862,26 @@ async def translate_report(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Dummy translation endpoint for frontend compatibility.
+    Translate the final report to target language.
     """
+    from app.services.llm import translate_markdown
+
     result = await db.execute(
-        text("SELECT final_report FROM sessions WHERE session_id = :id"),
+        text("SELECT final_report, state FROM sessions WHERE session_id = :id"),
         {"id": session_id},
     )
     row = result.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
-    if not row[0]:
-        raise HTTPException(status_code=400, detail="Session not yet completed")
 
-    # For now, return the original markdown; real translation can be wired to LLM later.
+    if not row[0]:
+        raise HTTPException(status_code=400, detail="Report not yet generated")
+
+    translated = await translate_markdown(row[0], target_language)
+
     return {
-        "translated_markdown": row[0],
+        "session_id": str(session_id),
+        "original_language": "lt",
         "target_language": target_language,
+        "translated_markdown": translated,
     }

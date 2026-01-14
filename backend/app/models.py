@@ -3,10 +3,17 @@ Pydantic models for API requests and responses.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+
+# ============================================
+# Interview Mode
+# ============================================
+
+InterviewMode = Literal["quick", "precise"]
 
 
 # ============================================
@@ -27,6 +34,14 @@ class SlotDefinition(BaseModel):
     description: Optional[str] = None
     is_required: bool = False
     priority_weight: float = 1.0
+
+
+class SlotStatus(BaseModel):
+    """Slot status for frontend display."""
+    slot_key: str
+    label: str
+    status: Literal["filled", "partial", "empty"]
+    confidence: float
 
 
 # ============================================
@@ -75,6 +90,43 @@ class RiskRule(BaseModel):
 
 
 # ============================================
+# Contact Info Models
+# ============================================
+
+class ContactInfo(BaseModel):
+    """Contact information collected at end of interview."""
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+# ============================================
+# Feedback Models
+# ============================================
+
+class FeedbackSubmission(BaseModel):
+    """Feedback submission from user."""
+    rating: int = Field(..., ge=1, le=5)
+    feedback_text: Optional[str] = None
+
+
+class FeedbackResponse(BaseModel):
+    """Feedback entry for admin view."""
+    id: UUID
+    session_id: UUID
+    rating: int
+    feedback_text: Optional[str]
+    created_at: datetime
+
+
+class FeedbackStats(BaseModel):
+    """Aggregated feedback statistics."""
+    total_count: int
+    average_rating: float
+    rating_distribution: Dict[int, int]
+
+
+# ============================================
 # Message Models
 # ============================================
 
@@ -94,6 +146,7 @@ class AgentState(BaseModel):
     """Complete agent state for a session."""
     session_id: UUID
     language: str = "lt"
+    interview_mode: InterviewMode = "quick"
     round: int = 1
     history: List[Message] = []
     slots: Dict[str, SlotValue] = {}
@@ -102,6 +155,7 @@ class AgentState(BaseModel):
     round_summary: Optional[str] = None
     asked_question_ids: List[str] = []
     next_questions: List[Question] = []
+    contact_info: Optional[ContactInfo] = None
 
 
 # ============================================
@@ -111,6 +165,7 @@ class AgentState(BaseModel):
 class StartSessionRequest(BaseModel):
     """Request to start a new session."""
     language: str = "lt"
+    interview_mode: InterviewMode = "quick"
 
 
 class TranscriptConfirmation(BaseModel):
@@ -122,6 +177,11 @@ class TranscriptConfirmation(BaseModel):
 class SubmitAnswerRequest(BaseModel):
     """Request to submit confirmed transcripts."""
     transcripts: List[TranscriptConfirmation]
+
+
+class FinalizeRequest(BaseModel):
+    """Request to finalize session with contact info."""
+    contact_info: Optional[ContactInfo] = None
 
 
 class BrainConfigImportRequest(BaseModel):
@@ -138,6 +198,7 @@ class StartSessionResponse(BaseModel):
     session_id: UUID
     round: int
     questions: List[Question]
+    interview_mode: InterviewMode = "quick"
 
 
 class TranscribeResponse(BaseModel):
@@ -156,14 +217,18 @@ class SubmitAnswerResponse(BaseModel):
     round_summary: Optional[str] = None
     next_questions: List[Question]
     is_complete: bool = False
+    clarification_question: Optional[str] = None
+    slot_status: Optional[List[SlotStatus]] = None
+    progress_percent: Optional[int] = None  # Overall completion percentage (0-100)
 
 
 class FinalizeResponse(BaseModel):
     """Response after finalizing the session."""
     session_id: UUID
-    final_markdown: str
+    final_markdown: str  # Contains summary for client (Sections I-III)
     slots: Dict[str, SlotValue]
     risk_flags: List[RiskFlag]
+    email_sent: bool = False  # True if full report was sent to email
 
 
 class BrainConfigExportResponse(BaseModel):

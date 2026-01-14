@@ -6,9 +6,9 @@ Handles audio transcription using OpenAI's Whisper model.
 
 import os
 import tempfile
+import traceback
 from pathlib import Path
 from typing import Optional, Tuple
-import asyncio
 
 # Lazy load whisper to avoid startup delay
 _whisper_model = None
@@ -30,7 +30,7 @@ def _get_whisper_model():
 
 async def transcribe_audio(
     audio_data: bytes,
-    language: str = "lt",
+    language: str = None,
     filename: Optional[str] = None,
 ) -> Tuple[str, float]:
     """
@@ -38,49 +38,47 @@ async def transcribe_audio(
 
     Args:
         audio_data: Raw audio bytes (WebM, WAV, etc.)
-        language: Language code (default: Lithuanian)
+        language: Language code or None for auto-detection
         filename: Optional original filename for extension detection
 
     Returns:
         Tuple of (transcript_text, confidence_score)
     """
-    from app.config import get_settings
-    settings = get_settings()
-
-    if len(audio_data) > settings.max_audio_bytes:
-        raise ValueError("Audio file too large")
-
-    return await asyncio.to_thread(_transcribe_sync, audio_data, language, filename)
-
-
-def _transcribe_sync(
-    audio_data: bytes,
-    language: str,
-    filename: Optional[str],
-) -> Tuple[str, float]:
-    """Synchronous transcription helper to run in a thread."""
+    print(f"transcribe_audio called: {len(audio_data)} bytes, filename={filename}, language={language or 'auto-detect'}")
+    
     # Determine file extension
     extension = ".webm"
     if filename:
         ext = Path(filename).suffix.lower()
         if ext in [".wav", ".mp3", ".m4a", ".webm", ".ogg"]:
             extension = ext
+    
+    print(f"Using extension: {extension}")
 
     # Write audio to temporary file
     with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as tmp_file:
         tmp_file.write(audio_data)
         tmp_path = tmp_file.name
+    
+    print(f"Temp file created: {tmp_path}, size: {os.path.getsize(tmp_path)}")
 
     try:
         # Get Whisper model
         model = _get_whisper_model()
+        print("Got Whisper model, starting transcription...")
 
-        # Transcribe
-        result = model.transcribe(
-            tmp_path,
-            language=language,
-            task="transcribe",
-        )
+        # Transcribe with auto-detection if no language specified
+        transcribe_opts = {
+            "task": "transcribe",
+        }
+        if language:
+            transcribe_opts["language"] = language
+        # If language is None, Whisper will auto-detect
+        
+        result = model.transcribe(tmp_path, **transcribe_opts)
+        
+        detected_lang = result.get("language", "unknown")
+        print(f"Transcription complete (detected: {detected_lang}): {result.get('text', '')[:100]}...")
 
         transcript = result.get("text", "").strip()
 
@@ -96,6 +94,11 @@ def _transcribe_sync(
 
         return transcript, avg_confidence
 
+    except Exception as e:
+        print(f"Transcription error: {e}")
+        print(traceback.format_exc())
+        raise
+
     finally:
         # Cleanup temp file
         try:
@@ -107,13 +110,6 @@ def _transcribe_sync(
 async def get_audio_duration(audio_data: bytes, filename: Optional[str] = None) -> float:
     """
     Get duration of audio file in seconds.
-
-    Args:
-        audio_data: Raw audio bytes
-        filename: Optional filename for extension
-
-    Returns:
-        Duration in seconds
     """
     extension = ".webm"
     if filename:

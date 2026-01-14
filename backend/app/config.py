@@ -19,17 +19,22 @@ class Settings(BaseSettings):
 
     # Claude API
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-3-5-sonnet-20241022"
+
+    # Google Gemini API
+    google_api_key: str = ""
 
     # Admin
     admin_api_key: str = "change-this-in-production"
+
+    # Email (Resend.com)
+    resend_api_key: str = ""
+    email_from: str = ""
 
     # CORS
     allowed_origins: str = "http://localhost:3000"
 
     # Whisper
-    whisper_model: str = "medium"
-    max_audio_bytes: int = 8 * 1024 * 1024  # 8 MB upload cap to guard STT
+    whisper_model: str = "small"
 
     # Server
     host: str = "0.0.0.0"
