@@ -139,7 +139,7 @@ journalctl -u agent-brain -f
 - **LLM fallback**: Gemini -> Claude on 429/503/UNAVAILABLE errors
 - **Whisper model**: "small" for speed (was "medium")
 - **Reports**: Stored in Lithuanian, translated on demand
-- **Admin key**: Stored in localStorage on frontend
+- **Admin key**: Stored in localStorage, re-verified against backend on every page load (prevents stale/invalid keys)
 - **CORS**: Allows Vercel frontend + localhost:3000
 
 ## Documentation
