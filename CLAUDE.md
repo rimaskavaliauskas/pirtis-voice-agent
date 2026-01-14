@@ -65,6 +65,15 @@ GET  /admin/skill/versions       - List skill versions
 POST /admin/skill/rules/generate - Generate rules from expert feedback
 ```
 
+## Repository Structure
+
+| Repo | Path | Remote |
+|------|------|--------|
+| **Frontend** | `D:\AI\aleksandras-2-dalis\voice-agent\frontend` | GitHub (auto-deploys to Vercel) |
+| **Backend** | `D:\AI\aleksandras-2-dalis\voice-agent\backend` | Local only (deploy via scp to VPS) |
+
+**Backend sync workflow**: VPS is source of truth → sync to local with `scp` → commit locally
+
 ## Key Files
 
 ### Frontend (`frontend/`)
