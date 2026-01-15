@@ -43,6 +43,7 @@ export default function SessionReviewPage() {
   const [isTranslating, setIsTranslating] = useState(false);
 
   // Initialize theme from localStorage (must match admin page - default light, .dark for dark)
+  // Restore dark mode when leaving admin (since frontend pages need dark theme)
   useEffect(() => {
     const savedTheme = localStorage.getItem('admin_theme');
     if (savedTheme === 'dark') {
@@ -50,6 +51,10 @@ export default function SessionReviewPage() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Cleanup: restore dark mode when leaving admin pages
+    return () => {
+      document.documentElement.classList.add('dark');
+    };
   }, []);
 
   // Load session data

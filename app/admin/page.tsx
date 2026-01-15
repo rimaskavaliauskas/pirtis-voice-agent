@@ -119,7 +119,8 @@ export default function AdminPage() {
     checkStoredKey();
   }, []);
 
-  // Initialize theme from localStorage (default light, .dark class for dark mode)
+  // Initialize theme from localStorage (default light for admin, .dark class for dark mode)
+  // Restore dark mode when leaving admin (since frontend pages need dark theme)
   useEffect(() => {
     const savedTheme = localStorage.getItem('admin_theme');
     if (savedTheme === 'dark') {
@@ -129,6 +130,10 @@ export default function AdminPage() {
       setIsDarkTheme(false);
       document.documentElement.classList.remove('dark');
     }
+    // Cleanup: restore dark mode when leaving admin pages
+    return () => {
+      document.documentElement.classList.add('dark');
+    };
   }, []);
 
   // Toggle theme
