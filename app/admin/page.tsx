@@ -56,6 +56,7 @@ export default function AdminPage() {
   const [authState, setAuthState] = useState<AdminState>('loading');
   const [adminKeyInput, setAdminKeyInput] = useState('');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [yamlContent, setYamlContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -156,7 +157,7 @@ export default function AdminPage() {
       return;
     }
 
-    setAuthState('loading');
+    setIsAuthenticating(true);
     setAuthError(null);
 
     try {
@@ -170,10 +171,11 @@ export default function AdminPage() {
       toast.success('Authenticated successfully');
     } catch (error) {
       // Key is invalid
-      setAuthState('not_authenticated');
       const message = error instanceof Error ? error.message : 'Authentication failed';
       setAuthError(message);
       toast.error(message);
+    } finally {
+      setIsAuthenticating(false);
     }
   }, [adminKeyInput]);
 
@@ -619,18 +621,18 @@ risk_rules:
               placeholder="Enter admin key..."
               className="w-full px-3 py-2 border rounded-md"
               onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
-              disabled={authState === 'loading'}
+              disabled={isAuthenticating}
             />
             {authError && (
               <p className="text-sm text-red-500">{authError}</p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => router.push('/')} disabled={authState === 'loading'}>
+            <Button variant="outline" onClick={() => router.push('/')} disabled={isAuthenticating}>
               Cancel
             </Button>
-            <Button onClick={handleAuthenticate} disabled={authState === 'loading'}>
-              {authState === 'loading' ? 'Verifying...' : 'Authenticate'}
+            <Button onClick={handleAuthenticate} disabled={isAuthenticating}>
+              {isAuthenticating ? 'Verifying...' : 'Authenticate'}
             </Button>
           </DialogFooter>
         </DialogContent>

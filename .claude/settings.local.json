@@ -16,7 +16,9 @@
       "Bash(git pull:*)",
       "Bash(echo:*)",
       "Bash(powershell -Command:*)",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "Bash(find:*)",
+      "Bash(python3:*)"
     ]
   }
 }
