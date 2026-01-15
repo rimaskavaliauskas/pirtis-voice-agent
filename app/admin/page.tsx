@@ -663,13 +663,13 @@ risk_rules:
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 border-b border-white/10 pb-2">
+          <div className="flex gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
             <button
               onClick={() => setActiveTab('config')}
               className={`px-4 py-2 rounded-t-lg transition-colors ${
                 activeTab === 'config'
                   ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-white hover:bg-gray-100 dark:bg-white/5'
               }`}
             >
               <ConfigIcon className="w-4 h-4 inline mr-2" />
@@ -680,7 +680,7 @@ risk_rules:
               className={`px-4 py-2 rounded-t-lg transition-colors ${
                 activeTab === 'feedback'
                   ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-white hover:bg-gray-100 dark:bg-white/5'
               }`}
             >
               <FeedbackIcon className="w-4 h-4 inline mr-2" />
@@ -696,7 +696,7 @@ risk_rules:
               className={`px-4 py-2 rounded-t-lg transition-colors ${
                 activeTab === 'review'
                   ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-white hover:bg-gray-100 dark:bg-white/5'
               }`}
             >
               <ReviewIcon className="w-4 h-4 inline mr-2" />
@@ -712,7 +712,7 @@ risk_rules:
               className={`px-4 py-2 rounded-t-lg transition-colors ${
                 activeTab === 'skill'
                   ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-white hover:bg-gray-100 dark:bg-white/5'
               }`}
             >
               <SkillIcon className="w-4 h-4 inline mr-2" />
@@ -856,21 +856,21 @@ risk_rules:
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-primary">
                           {feedbackStats.total_count}
                         </div>
-                        <div className="text-sm text-gray-400">Total Responses</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Responses</div>
                       </div>
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-amber-400 flex items-center justify-center gap-1">
                           {feedbackStats.average_rating.toFixed(1)}
                           <StarIcon className="w-6 h-6" filled />
                         </div>
-                        <div className="text-sm text-gray-400">Average Rating</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Average Rating</div>
                       </div>
-                      <div className="col-span-2 p-4 bg-white/5 rounded-lg">
-                        <div className="text-sm text-gray-400 mb-2">Rating Distribution</div>
+                      <div className="col-span-2 p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Rating Distribution</div>
                         <div className="flex items-end gap-1 h-12">
                           {[1, 2, 3, 4, 5].map((star) => {
                             const count = feedbackStats.rating_distribution[star] || 0;
@@ -916,7 +916,7 @@ risk_rules:
                       <LoadingSpinner className="w-8 h-8" />
                     </div>
                   ) : feedbackList.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-8 text-gray-600 dark:text-gray-400">
                       No feedback yet
                     </div>
                   ) : (
@@ -924,7 +924,7 @@ risk_rules:
                       {feedbackList.map((entry) => (
                         <div
                           key={entry.id}
-                          className="p-4 bg-white/5 rounded-lg border border-white/10"
+                          className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10"
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1">
@@ -941,7 +941,7 @@ risk_rules:
                             </span>
                           </div>
                           {entry.feedback_text && (
-                            <p className="text-sm text-gray-300 mt-2">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
                               &ldquo;{entry.feedback_text}&rdquo;
                             </p>
                           )}
@@ -968,30 +968,30 @@ risk_rules:
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-green-400">
                           {expertReviewStats.total_reviews}
                         </div>
-                        <div className="text-sm text-gray-400">Reviews Completed</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Reviews Completed</div>
                       </div>
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-amber-400 flex items-center justify-center gap-1">
                           {expertReviewStats.avg_overall_rating.toFixed(1)}
                           <StarIcon className="w-6 h-6" filled />
                         </div>
-                        <div className="text-sm text-gray-400">Avg Overall Rating</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Avg Overall Rating</div>
                       </div>
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-blue-400">
                           {expertReviewStats.question_reviews.total}
                         </div>
-                        <div className="text-sm text-gray-400">Questions Reviewed</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Questions Reviewed</div>
                       </div>
-                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                      <div className="text-center p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
                         <div className="text-3xl font-bold text-purple-400">
                           {expertReviewStats.question_reviews.avg_effectiveness.toFixed(1)}
                         </div>
-                        <div className="text-sm text-gray-400">Avg Effectiveness</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Avg Effectiveness</div>
                       </div>
                     </div>
                   </CardContent>
@@ -1011,7 +1011,7 @@ risk_rules:
                     <select
                       value={reviewFilter}
                       onChange={(e) => setReviewFilter(e.target.value as 'all' | 'pending' | 'reviewed')}
-                      className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-md text-gray-300"
+                      className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md text-gray-700 dark:text-gray-300"
                     >
                       <option value="all">All Sessions</option>
                       <option value="pending">Pending Review</option>
@@ -1032,7 +1032,7 @@ risk_rules:
                       <LoadingSpinner className="w-8 h-8" />
                     </div>
                   ) : sessionsList.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-8 text-gray-600 dark:text-gray-400">
                       No completed sessions found
                     </div>
                   ) : (
@@ -1040,7 +1040,7 @@ risk_rules:
                       {sessionsList.map((session) => (
                         <div
                           key={session.session_id}
-                          className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-primary/50 transition-colors cursor-pointer"
+                          className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 hover:border-primary/50 transition-colors cursor-pointer"
                           onClick={() => router.push(`/admin/review/${session.session_id}`)}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -1068,7 +1068,7 @@ risk_rules:
                                 <span className="text-gray-500 italic">Anonymous</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                            <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
                               <span>{session.questions_count} Q&amp;A</span>
                               <span>{session.slots_filled} slots</span>
                               {session.has_report && (
@@ -1105,7 +1105,7 @@ risk_rules:
                       <LoadingSpinner className="w-6 h-6" />
                     </div>
                   ) : skillVersions.length === 0 ? (
-                    <p className="text-gray-400">No skill versions found</p>
+                    <p className="text-gray-600 dark:text-gray-400">No skill versions found</p>
                   ) : (
                     <div className="space-y-2">
                       {skillVersions.map((version) => (
@@ -1114,7 +1114,7 @@ risk_rules:
                           className={`p-3 rounded-lg border ${
                             version.is_active
                               ? 'bg-green-500/10 border-green-500/30'
-                              : 'bg-white/5 border-white/10'
+                              : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10'
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -1140,7 +1140,7 @@ risk_rules:
                             )}
                           </div>
                           {version.change_summary && (
-                            <p className="text-xs text-gray-400 mt-1">{version.change_summary}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{version.change_summary}</p>
                           )}
                           <div className="text-xs text-gray-500 mt-1">
                             Created: {version.created_at ? new Date(version.created_at).toLocaleDateString() : 'N/A'}
@@ -1195,7 +1195,7 @@ risk_rules:
                 </CardHeader>
                 <CardContent>
                   {pendingRules.length === 0 ? (
-                    <p className="text-gray-400 text-center py-4">
+                    <p className="text-gray-600 dark:text-gray-400 text-center py-4">
                       No new rules. Click &quot;Generate Rules&quot; after collecting expert reviews.
                     </p>
                   ) : (
@@ -1203,7 +1203,7 @@ risk_rules:
                       {pendingRules.map((rule) => (
                         <div
                           key={rule.id}
-                          className="p-4 bg-white/5 rounded-lg border border-white/10"
+                          className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10"
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
@@ -1214,7 +1214,7 @@ risk_rules:
                                 rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
                                 rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
                                 rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
-                                'bg-gray-500/20 text-gray-400'
+                                'bg-gray-500/20 text-gray-600 dark:text-gray-400'
                               }`}>
                                 {rule.rule_type}
                               </span>
@@ -1224,7 +1224,7 @@ risk_rules:
                             </span>
                           </div>
                           <p className="text-sm text-gray-200 mb-1">{rule.rule_text}</p>
-                          <p className="text-xs text-gray-400 mb-2">EN: {rule.rule_text_en}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">EN: {rule.rule_text_en}</p>
                           {rule.source_pattern && (
                             <p className="text-xs text-gray-500 mb-2">Source: {rule.source_pattern}</p>
                           )}
@@ -1272,7 +1272,7 @@ risk_rules:
                       {approvedRules.map((rule) => (
                         <label
                           key={rule.id}
-                          className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10 cursor-pointer hover:border-primary/50"
+                          className="flex items-start gap-3 p-3 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 cursor-pointer hover:border-primary/50"
                         >
                           <input
                             type="checkbox"
@@ -1289,7 +1289,7 @@ risk_rules:
                                 rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
                                 rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
                                 rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
-                                'bg-gray-500/20 text-gray-400'
+                                'bg-gray-500/20 text-gray-600 dark:text-gray-400'
                               }`}>
                                 {rule.rule_type}
                               </span>
@@ -1300,25 +1300,25 @@ risk_rules:
                       ))}
                     </div>
 
-                    <div className="flex gap-4 items-end pt-4 border-t border-white/10">
+                    <div className="flex gap-4 items-end pt-4 border-t border-gray-200 dark:border-white/10">
                       <div className="flex-1">
-                        <label className="text-sm text-gray-400 block mb-1">New Version</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-400 block mb-1">New Version</label>
                         <input
                           type="text"
                           value={newVersionInput}
                           onChange={(e) => setNewVersionInput(e.target.value)}
                           placeholder="e.g., 3.2"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                          className="w-full px-3 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md"
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="text-sm text-gray-400 block mb-1">Approved By</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-400 block mb-1">Approved By</label>
                         <input
                           type="text"
                           value={approverName}
                           onChange={(e) => setApproverName(e.target.value)}
                           placeholder="Your name"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                          className="w-full px-3 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md"
                         />
                       </div>
                       <Button
@@ -1343,13 +1343,13 @@ risk_rules:
               {appliedRules.length > 0 && (
                 <Card>
                   <CardHeader
-                    className="cursor-pointer hover:bg-white/5 transition-colors"
+                    className="cursor-pointer hover:bg-gray-100 dark:bg-white/5 transition-colors"
                     onClick={() => setShowAppliedRules(!showAppliedRules)}
                   >
                     <CardTitle className="flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         Applied Rules (History)
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-400">
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-600 dark:text-gray-400">
                           {appliedRules.length} applied
                         </span>
                       </span>
@@ -1367,17 +1367,17 @@ risk_rules:
                         {appliedRules.map((rule) => (
                           <div
                             key={rule.id}
-                            className="p-3 bg-white/5 rounded-lg border border-white/5 opacity-70"
+                            className="p-3 bg-gray-100 dark:bg-white/5 rounded-lg border border-white/5 opacity-70"
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-400 font-medium">
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-600 dark:text-gray-400 font-medium">
                                 APPLIED
                               </span>
                               <span className={`px-2 py-0.5 text-xs rounded-full ${
                                 rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
                                 rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
                                 rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
-                                'bg-gray-500/20 text-gray-400'
+                                'bg-gray-500/20 text-gray-600 dark:text-gray-400'
                               }`}>
                                 {rule.rule_type}
                               </span>
@@ -1387,7 +1387,7 @@ risk_rules:
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-300">{rule.rule_text_en}</p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{rule.rule_text_en}</p>
                           </div>
                         ))}
                       </div>

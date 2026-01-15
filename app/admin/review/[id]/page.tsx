@@ -217,7 +217,7 @@ export default function SessionReviewPage() {
               <CardTitle className="text-destructive">Error</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-400">{error || 'Session not found'}</p>
+              <p className="text-gray-600 dark:text-gray-400">{error || 'Session not found'}</p>
               <Button className="mt-4" onClick={() => router.push('/admin')}>
                 Back to Admin
               </Button>
@@ -267,7 +267,7 @@ export default function SessionReviewPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ul className="text-sm text-gray-400 list-disc list-inside space-y-1">
+                <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
                   <li>The session and all conversation history</li>
                   <li>All transcripts and messages</li>
                   <li>Any expert reviews for this session</li>
@@ -321,16 +321,16 @@ export default function SessionReviewPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {sessionData.questions_answers.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">No Q&A data available</p>
+              <p className="text-gray-600 dark:text-gray-400 text-center py-4">No Q&A data available</p>
             ) : (
               sessionData.questions_answers.map((qa, index) => (
                 <div
                   key={qa.question_id}
-                  className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-4"
+                  className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 space-y-4"
                 >
                   <div className="flex items-start justify-between">
-                    <span className="text-xs text-gray-500">Round {qa.round} - Q{index + 1}</span>
-                    <span className="text-xs text-gray-500">{qa.question_id}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500">Round {qa.round} - Q{index + 1}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500">{qa.question_id}</span>
                   </div>
 
                   {/* Question */}
@@ -342,18 +342,18 @@ export default function SessionReviewPage() {
                   {/* Answer */}
                   <div>
                     <label className="text-xs text-green-400 block mb-1">User Response</label>
-                    <p className="text-gray-300">{qa.answer_text || <span className="italic text-gray-500">No response</span>}</p>
+                    <p className="text-gray-700 dark:text-gray-300">{qa.answer_text || <span className="italic text-gray-500 dark:text-gray-500">No response</span>}</p>
                   </div>
 
                   {/* Rating */}
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Effectiveness Rating</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Effectiveness Rating</label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           onClick={() => !hasExistingReview && updateQuestionReview(qa.question_id, 'rating', star)}
-                          className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
+                          className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-gray-200 dark:hover:bg-white/10'} rounded`}
                           disabled={hasExistingReview}
                         >
                           <StarIcon className="w-5 h-5" filled={star <= (questionReviews[qa.question_id]?.rating || 3)} />
@@ -364,7 +364,7 @@ export default function SessionReviewPage() {
 
                   {/* What could be better */}
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">What could be better?</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">What could be better?</label>
                     <Textarea
                       value={questionReviews[qa.question_id]?.whatCouldBeBetter || ''}
                       onChange={(e) => updateQuestionReview(qa.question_id, 'whatCouldBeBetter', e.target.value)}
@@ -376,7 +376,7 @@ export default function SessionReviewPage() {
 
                   {/* Suggested alternative */}
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Suggested Alternative Question</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Suggested Alternative Question</label>
                     <Textarea
                       value={questionReviews[qa.question_id]?.suggestedAlternative || ''}
                       onChange={(e) => updateQuestionReview(qa.question_id, 'suggestedAlternative', e.target.value)}
@@ -403,7 +403,7 @@ export default function SessionReviewPage() {
             <CardContent className="space-y-4">
               {/* Translation buttons */}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">Translate report:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Translate report:</span>
                 <Button
                   variant="outline"
                   size="sm"
@@ -425,7 +425,7 @@ export default function SessionReviewPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setTranslatedReport(null)}
-                    className="text-gray-400"
+                    className="text-gray-600 dark:text-gray-400"
                   >
                     Show Original (LT)
                   </Button>
@@ -433,51 +433,51 @@ export default function SessionReviewPage() {
               </div>
 
               {/* Report Preview */}
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10 max-h-[400px] overflow-y-auto">
-                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+              <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 max-h-[400px] overflow-y-auto">
+                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
                   {translatedReport || sessionData.final_report}
                 </pre>
               </div>
 
               {/* Accuracy Rating */}
               <div>
-                <label className="text-sm text-gray-400 block mb-2">Accuracy Rating</label>
+                <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">Accuracy Rating</label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       onClick={() => !hasExistingReview && setSummaryReview((prev) => ({ ...prev, accuracyRating: star }))}
-                      className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
+                      className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-gray-200 dark:hover:bg-white/10'} rounded`}
                       disabled={hasExistingReview}
                     >
                       <StarIcon className="w-6 h-6" filled={star <= summaryReview.accuracyRating} />
                     </button>
                   ))}
-                  <span className="text-sm text-gray-400 ml-2">How accurately does the report reflect the conversation?</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">How accurately does the report reflect the conversation?</span>
                 </div>
               </div>
 
               {/* Completeness Rating */}
               <div>
-                <label className="text-sm text-gray-400 block mb-2">Completeness Rating</label>
+                <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">Completeness Rating</label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       onClick={() => !hasExistingReview && setSummaryReview((prev) => ({ ...prev, completenessRating: star }))}
-                      className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
+                      className={`p-1 ${hasExistingReview ? 'cursor-default' : 'hover:bg-gray-200 dark:hover:bg-white/10'} rounded`}
                       disabled={hasExistingReview}
                     >
                       <StarIcon className="w-6 h-6" filled={star <= summaryReview.completenessRating} />
                     </button>
                   ))}
-                  <span className="text-sm text-gray-400 ml-2">Are all important points covered?</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">Are all important points covered?</span>
                 </div>
               </div>
 
               {/* What could be better */}
               <div>
-                <label className="text-sm text-gray-400 block mb-1">What could be better in the report?</label>
+                <label className="text-sm text-gray-600 dark:text-gray-400 block mb-1">What could be better in the report?</label>
                 <Textarea
                   value={summaryReview.whatCouldBeBetter}
                   onChange={(e) => setSummaryReview((prev) => ({ ...prev, whatCouldBeBetter: e.target.value }))}
@@ -500,24 +500,24 @@ export default function SessionReviewPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm text-gray-400 block mb-1">Your Name (optional)</label>
+              <label className="text-sm text-gray-600 dark:text-gray-400 block mb-1">Your Name (optional)</label>
               <input
                 type="text"
                 value={reviewerName}
                 onChange={(e) => setReviewerName(e.target.value)}
                 placeholder="Expert reviewer name..."
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md"
+                className="w-full px-3 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md"
                 disabled={hasExistingReview}
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-2">Overall Rating</label>
+              <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">Overall Rating</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     onClick={() => !hasExistingReview && setOverallRating(star)}
-                    className={`p-2 transition-colors ${hasExistingReview ? 'cursor-default' : 'hover:bg-white/10'} rounded`}
+                    className={`p-2 transition-colors ${hasExistingReview ? 'cursor-default' : 'hover:bg-gray-200 dark:hover:bg-white/10'} rounded`}
                     disabled={hasExistingReview}
                   >
                     <StarIcon className="w-8 h-8" filled={star <= overallRating} />
@@ -526,7 +526,7 @@ export default function SessionReviewPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-1">Overall Comments</label>
+              <label className="text-sm text-gray-600 dark:text-gray-400 block mb-1">Overall Comments</label>
               <Textarea
                 value={overallComments}
                 onChange={(e) => setOverallComments(e.target.value)}
