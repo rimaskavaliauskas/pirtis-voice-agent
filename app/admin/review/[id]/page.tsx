@@ -42,13 +42,13 @@ export default function SessionReviewPage() {
   const [translatedReport, setTranslatedReport] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Initialize theme from localStorage (must match admin page)
+  // Initialize theme from localStorage (must match admin page - default light, .dark for dark)
   useEffect(() => {
     const savedTheme = localStorage.getItem('admin_theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.add('light');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 

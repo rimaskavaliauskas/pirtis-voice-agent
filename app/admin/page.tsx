@@ -118,12 +118,15 @@ export default function AdminPage() {
     checkStoredKey();
   }, []);
 
-  // Initialize theme from localStorage
+  // Initialize theme from localStorage (default light, .dark class for dark mode)
   useEffect(() => {
     const savedTheme = localStorage.getItem('admin_theme');
-    if (savedTheme === 'light') {
+    if (savedTheme === 'dark') {
+      setIsDarkTheme(true);
+      document.documentElement.classList.add('dark');
+    } else {
       setIsDarkTheme(false);
-      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
@@ -132,10 +135,12 @@ export default function AdminPage() {
     setIsDarkTheme((prev) => {
       const newTheme = !prev;
       if (newTheme) {
-        document.documentElement.classList.remove('light');
+        // Switch to dark
+        document.documentElement.classList.add('dark');
         localStorage.setItem('admin_theme', 'dark');
       } else {
-        document.documentElement.classList.add('light');
+        // Switch to light
+        document.documentElement.classList.remove('dark');
         localStorage.setItem('admin_theme', 'light');
       }
       return newTheme;
