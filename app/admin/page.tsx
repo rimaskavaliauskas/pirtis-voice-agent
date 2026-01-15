@@ -31,6 +31,7 @@ import {
   generateRulesFromFeedback,
   getPendingRules,
   getApprovedRules,
+  getAppliedRules,
   approveRule,
   rejectRule,
   createSkillVersionFromRules,
@@ -82,6 +83,8 @@ export default function AdminPage() {
   const [skillVersions, setSkillVersions] = useState<SkillVersion[]>([]);
   const [pendingRules, setPendingRules] = useState<LearnedRule[]>([]);
   const [approvedRules, setApprovedRules] = useState<LearnedRule[]>([]);
+  const [appliedRules, setAppliedRules] = useState<LearnedRule[]>([]);
+  const [showAppliedRules, setShowAppliedRules] = useState(false);
   const [skillLoading, setSkillLoading] = useState(false);
   const [generatingRules, setGeneratingRules] = useState(false);
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set());
@@ -448,17 +451,20 @@ risk_rules:
     setSkillLoading(true);
     try {
       console.log('Loading skill data...');
-      const [versions, pending, approved] = await Promise.all([
+      const [versions, pending, approved, applied] = await Promise.all([
         listSkillVersions(),
         getPendingRules(),
         getApprovedRules(),
+        getAppliedRules(),
       ]);
       console.log('Skill versions loaded:', versions.length);
       console.log('Pending rules:', pending.length);
-      console.log('Approved rules:', approved.length);
+      console.log('Approved rules (ready):', approved.length);
+      console.log('Applied rules (history):', applied.length);
       setSkillVersions(versions);
       setPendingRules(pending);
       setApprovedRules(approved);
+      setAppliedRules(applied);
     } catch (error) {
       console.error('Failed to load skill data:', error);
       toast.error(`Failed to load skill data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1172,10 +1178,17 @@ risk_rules:
                 </CardHeader>
               </Card>
 
-              {/* Pending Rules */}
+              {/* New Rules (Pending) */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Pending Rules ({pendingRules.length})</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    New Rules
+                    {pendingRules.length > 0 && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400">
+                        {pendingRules.length} to review
+                      </span>
+                    )}
+                  </CardTitle>
                   <CardDescription>
                     Review and approve rules generated from expert feedback
                   </CardDescription>
@@ -1183,7 +1196,7 @@ risk_rules:
                 <CardContent>
                   {pendingRules.length === 0 ? (
                     <p className="text-gray-400 text-center py-4">
-                      No pending rules. Click &quot;Generate Rules&quot; after collecting expert reviews.
+                      No new rules. Click &quot;Generate Rules&quot; after collecting expert reviews.
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -1193,14 +1206,19 @@ risk_rules:
                           className="p-4 bg-white/5 rounded-lg border border-white/10"
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
-                              rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
-                              rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {rule.rule_type}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 font-medium">
+                                NEW
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
+                                rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
+                                rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {rule.rule_type}
+                              </span>
+                            </div>
                             <span className="text-xs text-gray-500">
                               Confidence: {(rule.confidence_score * 100).toFixed(0)}%
                             </span>
@@ -1235,13 +1253,18 @@ risk_rules:
                 </CardContent>
               </Card>
 
-              {/* Approved Rules & Create Version */}
+              {/* Ready to Apply (Approved but not incorporated) */}
               {approvedRules.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Create New Skill Version</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      Ready to Apply
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400">
+                        {approvedRules.length} approved
+                      </span>
+                    </CardTitle>
                     <CardDescription>
-                      Select approved rules to incorporate into a new skill version
+                      Select rules to incorporate into a new skill version
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1258,14 +1281,26 @@ risk_rules:
                             className="mt-1"
                           />
                           <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 font-medium">
+                                APPROVED
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
+                                rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
+                                rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {rule.rule_type}
+                              </span>
+                            </div>
                             <p className="text-sm text-gray-200">{rule.rule_text_en}</p>
-                            <p className="text-xs text-gray-500">{rule.rule_type}</p>
                           </div>
                         </label>
                       ))}
                     </div>
 
-                    <div className="flex gap-4 items-end">
+                    <div className="flex gap-4 items-end pt-4 border-t border-white/10">
                       <div className="flex-1">
                         <label className="text-sm text-gray-400 block mb-1">New Version</label>
                         <input
@@ -1301,6 +1336,63 @@ risk_rules:
                       </Button>
                     </div>
                   </CardContent>
+                </Card>
+              )}
+
+              {/* Applied Rules (History) - Collapsible */}
+              {appliedRules.length > 0 && (
+                <Card>
+                  <CardHeader
+                    className="cursor-pointer hover:bg-white/5 transition-colors"
+                    onClick={() => setShowAppliedRules(!showAppliedRules)}
+                  >
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        Applied Rules (History)
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-400">
+                          {appliedRules.length} applied
+                        </span>
+                      </span>
+                      <span className="text-gray-500 text-sm">
+                        {showAppliedRules ? '▼' : '▶'}
+                      </span>
+                    </CardTitle>
+                    <CardDescription>
+                      Rules already incorporated into skill versions
+                    </CardDescription>
+                  </CardHeader>
+                  {showAppliedRules && (
+                    <CardContent>
+                      <div className="space-y-2">
+                        {appliedRules.map((rule) => (
+                          <div
+                            key={rule.id}
+                            className="p-3 bg-white/5 rounded-lg border border-white/5 opacity-70"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-400 font-medium">
+                                APPLIED
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                rule.rule_type === 'question_improvement' ? 'bg-blue-500/20 text-blue-400' :
+                                rule.rule_type === 'new_question' ? 'bg-purple-500/20 text-purple-400' :
+                                rule.rule_type === 'methodology' ? 'bg-green-500/20 text-green-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {rule.rule_type}
+                              </span>
+                              {rule.incorporated_in_skill && (
+                                <span className="text-xs text-gray-500">
+                                  → Skill v{rule.incorporated_in_skill}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-300">{rule.rule_text_en}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
                 </Card>
               )}
             </>

@@ -371,6 +371,9 @@ export interface LearnedRule {
   rule_text_en: string;
   affected_questions: string[];
   created_at: string | null;
+  status?: 'pending' | 'approved' | 'applied';
+  approved_at?: string | null;
+  incorporated_in_skill?: number | null;
 }
 
 export interface GenerateRulesResponse {

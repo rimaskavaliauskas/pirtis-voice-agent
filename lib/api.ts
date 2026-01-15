@@ -781,7 +781,8 @@ export async function getPendingRules(): Promise<LearnedRule[]> {
 }
 
 /**
- * Get approved rules (admin only)
+ * Get approved rules ready for skill creation (admin only)
+ * These are rules that have been approved but not yet incorporated into a skill.
  */
 export async function getApprovedRules(): Promise<LearnedRule[]> {
   const adminKey = getAdminKey();
@@ -791,6 +792,27 @@ export async function getApprovedRules(): Promise<LearnedRule[]> {
 
   return fetchWithRetry<LearnedRule[]>(
     `${API_BASE_URL}/admin/skill/rules/approved`,
+    {
+      method: 'GET',
+      headers: {
+        [ADMIN_KEY_HEADER]: adminKey,
+      },
+    }
+  );
+}
+
+/**
+ * Get applied rules that have been incorporated into a skill (admin only)
+ * These are historical rules for reference.
+ */
+export async function getAppliedRules(): Promise<LearnedRule[]> {
+  const adminKey = getAdminKey();
+  if (!adminKey) {
+    throw new ApiError('Admin key required', 401);
+  }
+
+  return fetchWithRetry<LearnedRule[]>(
+    `${API_BASE_URL}/admin/skill/rules/applied`,
     {
       method: 'GET',
       headers: {
