@@ -335,19 +335,19 @@ export default function SessionReviewPage() {
 
                   {/* Question */}
                   <div>
-                    <label className="text-xs text-blue-400 block mb-1">Question Asked</label>
-                    <p className="text-gray-200">{qa.question_text}</p>
+                    <label className="text-xs text-blue-600 dark:text-blue-400 font-medium block mb-1">Question Asked</label>
+                    <p className="text-gray-800 dark:text-gray-200">{qa.question_text}</p>
                   </div>
 
                   {/* Answer */}
                   <div>
-                    <label className="text-xs text-green-400 block mb-1">User Response</label>
+                    <label className="text-xs text-green-600 dark:text-green-400 font-medium block mb-1">User Response</label>
                     <p className="text-gray-700 dark:text-gray-300">{qa.answer_text || <span className="italic text-gray-500 dark:text-gray-500">No response</span>}</p>
                   </div>
 
                   {/* Rating */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Effectiveness Rating</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 font-medium block mb-1">Effectiveness Rating</label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -364,7 +364,7 @@ export default function SessionReviewPage() {
 
                   {/* What could be better */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">What could be better?</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 font-medium block mb-1">What could be better?</label>
                     <Textarea
                       value={questionReviews[qa.question_id]?.whatCouldBeBetter || ''}
                       onChange={(e) => updateQuestionReview(qa.question_id, 'whatCouldBeBetter', e.target.value)}
@@ -376,7 +376,7 @@ export default function SessionReviewPage() {
 
                   {/* Suggested alternative */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Suggested Alternative Question</label>
+                    <label className="text-xs text-gray-600 dark:text-gray-400 font-medium block mb-1">Suggested Alternative Question</label>
                     <Textarea
                       value={questionReviews[qa.question_id]?.suggestedAlternative || ''}
                       onChange={(e) => updateQuestionReview(qa.question_id, 'suggestedAlternative', e.target.value)}
