@@ -231,9 +231,8 @@ async def analyze_reviews_and_generate_rules(
     Returns:
         List of generated rule dicts, or empty list if insufficient data
     """
-    # Build query with date filter
-    # Note: Using string replacement for days because it's a constant, not user input
-    query = f"""
+    # Build query with date filter using parameterized query to prevent SQL injection
+    query = """
         SELECT
             er.id,
             er.session_id,
@@ -266,11 +265,11 @@ async def analyze_reviews_and_generate_rules(
                 LIMIT 1
             ) as summary_review
         FROM expert_reviews er
-        WHERE er.created_at > NOW() - INTERVAL '{since_days} days'
+        WHERE er.created_at > NOW() - make_interval(days => :since_days)
         ORDER BY er.created_at DESC
     """
 
-    result = await db.execute(text(query))
+    result = await db.execute(text(query), {'since_days': since_days})
 
     reviews = []
     for row in result.fetchall():

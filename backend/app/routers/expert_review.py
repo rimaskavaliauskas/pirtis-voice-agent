@@ -546,7 +546,7 @@ async def get_review_stats(
         "summary_reviews": {
             "total": sr_row[0],
             "avg_accuracy": round(float(sr_row[1]), 2),
-            "avg_completeness": round(float(sr_row[1]), 2),
+            "avg_completeness": round(float(sr_row[2]), 2),
         },
     }
 
