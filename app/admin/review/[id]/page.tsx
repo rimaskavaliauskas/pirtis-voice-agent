@@ -42,6 +42,16 @@ export default function SessionReviewPage() {
   const [translatedReport, setTranslatedReport] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // Initialize theme from localStorage (must match admin page)
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin_theme');
+    if (savedTheme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, []);
+
   // Load session data
   useEffect(() => {
     async function loadSession() {
