@@ -126,8 +126,16 @@ journalctl -u agent-brain -f
 | Array params | `ANY(:ids)` | `ANY(CAST(:ids AS int[]))` |
 | jsonb columns | `json.loads(row[n])` | Check `isinstance(row[n], dict)` first |
 | Same param twice | `CASE WHEN :p ... :p` | Calculate in Python, pass separate params |
+| Date intervals | `f"INTERVAL '{days} days'"` | `make_interval(days => :days)` |
 
 **Why**: SQLAlchemy `:name` conflicts with PostgreSQL `::` cast. asyncpg returns jsonb as dicts.
+
+## VPS Database Access
+
+```bash
+# Container: agent_postgres, User: agent, Database: agentbrain
+cat migration.sql | docker exec -i agent_postgres psql -U agent -d agentbrain
+```
 
 ## Protected Files (DO NOT MODIFY)
 
