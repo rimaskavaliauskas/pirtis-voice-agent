@@ -27,6 +27,7 @@ from app.services.skill_evolution import (
     save_generated_rules,
     get_pending_rules,
     get_approved_rules,
+    get_applied_rules,
     approve_rule,
     reject_rule,
     create_skill_from_rules,
@@ -70,6 +71,9 @@ class RuleResponse(BaseModel):
     rule_text_en: str
     affected_questions: List[str]
     created_at: Optional[str]
+    status: Optional[str] = None  # 'pending', 'approved', 'applied'
+    approved_at: Optional[str] = None
+    incorporated_in_skill: Optional[int] = None  # skill version ID if applied
 
 
 class ApproveRuleRequest(BaseModel):
@@ -165,8 +169,18 @@ async def list_approved_rules(
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_admin_key),
 ):
-    """Get all approved rules."""
+    """Get approved rules that are ready to be used in skill creation."""
     rules = await get_approved_rules(db)
+    return rules
+
+
+@router.get("/rules/applied", response_model=List[RuleResponse])
+async def list_applied_rules(
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_key),
+):
+    """Get rules that have already been incorporated into a skill version."""
+    rules = await get_applied_rules(db)
     return rules
 
 

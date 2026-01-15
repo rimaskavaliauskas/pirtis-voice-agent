@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from '@/lib/translations';
 
 // ============================================
 // Types
@@ -129,6 +130,8 @@ export function ReportPreview({
   onStartNew,
   className = '',
 }: ReportPreviewProps) {
+  const { t } = useTranslation();
+
   // Copy to clipboard
   const handleCopy = useCallback(async () => {
     try {
@@ -166,16 +169,16 @@ export function ReportPreview({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <DocumentIcon className="w-5 h-5" />
-            Interview Report
+            {t('report.title')}
           </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <CopyIcon className="w-4 h-4 mr-1" />
-              Copy
+              {t('report.copy')}
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownload}>
               <DownloadIcon className="w-4 h-4 mr-1" />
-              Download
+              {t('report.download')}
             </Button>
           </div>
         </div>
@@ -192,7 +195,7 @@ export function ReportPreview({
         <CardFooter className="justify-center">
           <Button onClick={onStartNew} size="lg">
             <PlusIcon className="w-5 h-5 mr-2" />
-            Start New Interview
+            {t('report.startNew')}
           </Button>
         </CardFooter>
       )}

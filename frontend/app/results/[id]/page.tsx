@@ -5,8 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ReportPreview } from '@/components/report-preview';
+import { FeedbackForm } from '@/components/feedback-form';
 import { getResults, downloadReport, translateReport, isValidSessionId } from '@/lib/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/translations';
 
 // ============================================
 // Types
@@ -22,16 +24,20 @@ export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  const { t, language } = useTranslation();
 
   const [state, setState] = useState<PageState>('loading');
   const [markdown, setMarkdown] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState<boolean>(false);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
 
   // Translation state
   const [translatedMarkdown, setTranslatedMarkdown] = useState<string | null>(null);
   const [translationLanguage, setTranslationLanguage] = useState<string>('en');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [autoTranslated, setAutoTranslated] = useState(false);
 
   // Load results
   useEffect(() => {
@@ -45,6 +51,8 @@ export default function ResultsPage() {
       try {
         const response = await getResults(sessionId);
         setMarkdown(response.final_markdown);
+        setEmailSent(response.email_sent || false);
+        setContactEmail(response.contact_email || null);
         setState('ready');
       } catch (err) {
         console.error('Failed to load results:', err);
@@ -55,6 +63,28 @@ export default function ResultsPage() {
 
     loadResults();
   }, [sessionId]);
+
+  // Auto-translate report when language is not Lithuanian
+  useEffect(() => {
+    if (language === 'lt' || !markdown || autoTranslated) return;
+
+    const autoTranslate = async () => {
+      setIsTranslating(true);
+      try {
+        const response = await translateReport(sessionId, language);
+        setTranslatedMarkdown(response.translated_markdown);
+        setTranslationLanguage(language);
+        setShowTranslation(true);
+        setAutoTranslated(true);
+      } catch (err) {
+        console.error('Auto-translation failed:', err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    autoTranslate();
+  }, [sessionId, language, markdown, autoTranslated]);
 
   // Handle download
   const handleDownload = useCallback(async () => {
@@ -147,13 +177,15 @@ export default function ResultsPage() {
     }
   }, [sessionId, translationLanguage, translatedMarkdown]);
 
-  // Render loading state
-  if (state === 'loading') {
+  // Render loading state (including auto-translation)
+  if (state === 'loading' || (language !== 'lt' && !autoTranslated && markdown)) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <LoadingSpinner className="w-10 h-10 mx-auto" />
-          <p className="text-muted-foreground">Loading your report...</p>
+          <p className="text-muted-foreground">
+            {state === 'loading' ? t('results.loading') : t('results.translating')}
+          </p>
         </div>
       </main>
     );
@@ -166,9 +198,9 @@ export default function ResultsPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <ErrorIcon className="w-12 h-12 mx-auto text-destructive" />
-            <h2 className="text-xl font-semibold">Error</h2>
+            <h2 className="text-xl font-semibold">{t('session.error')}</h2>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={() => router.push('/')}>Go Home</Button>
+            <Button onClick={() => router.push('/')}>{t('session.goHome')}</Button>
           </CardContent>
         </Card>
       </main>
@@ -181,20 +213,39 @@ export default function ResultsPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <SuccessIcon className="w-16 h-16 mx-auto text-green-500" />
-          <h1 className="text-2xl font-bold">Interview Complete!</h1>
+          <h1 className="text-2xl font-bold">{t('results.complete')}</h1>
           <p className="text-muted-foreground">
-            Your personalized sauna design report is ready
+            {t('results.reportReady')}
           </p>
         </div>
 
+        {/* Email Sent Notice */}
+        {emailSent && (
+          <Card className="glass-panel border-green-500/30 bg-green-500/10">
+            <CardContent className="pt-4 flex items-center gap-3">
+              <EmailIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-400">
+                  {t('results.emailSent')}
+                </p>
+                {contactEmail && (
+                  <p className="text-xs text-green-500/80">
+                    {t('results.sentTo', { email: contactEmail })}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Translation Controls */}
-        <Card className="bg-muted/30">
+        <Card className="glass-panel border-white/5">
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <TranslateIcon className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm font-medium">Translate report:</span>
-                <div className="flex gap-1">
+              <div className="flex items-center gap-3">
+                <TranslateIcon className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium text-gray-300">{t('results.translateLabel')}</span>
+                <div className="flex gap-2">
                   {[
                     { code: 'en', label: 'English', flag: 'EN' },
                     { code: 'ru', label: 'Russian', flag: 'RU' },
@@ -206,11 +257,10 @@ export default function ResultsPage() {
                         setTranslatedMarkdown(null);
                         setShowTranslation(false);
                       }}
-                      className={`px-3 py-1 text-sm rounded border transition-all ${
-                        translationLanguage === lang.code
-                          ? 'border-primary bg-primary/10 font-medium'
-                          : 'border-muted hover:border-primary/50'
-                      }`}
+                      className={`px-3 py-1 text-sm rounded transition-all ${translationLanguage === lang.code
+                          ? 'border border-primary bg-primary/20 text-primary font-bold shadow-[0_0_10px_rgba(251,191,36,0.2)]'
+                          : 'border border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
+                        }`}
                     >
                       {lang.flag}
                     </button>
@@ -223,16 +273,17 @@ export default function ResultsPage() {
                   size="sm"
                   onClick={handleTranslate}
                   disabled={isTranslating}
+                  className="border-white/10 hover:bg-white/5 text-gray-300"
                 >
                   {isTranslating ? (
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
-                      Translating...
+                      {t('results.translating')}
                     </>
                   ) : showTranslation ? (
-                    'Show Original'
+                    t('results.showOriginal')
                   ) : (
-                    'Show Translation'
+                    t('results.showTranslation')
                   )}
                 </Button>
                 <Button
@@ -240,14 +291,15 @@ export default function ResultsPage() {
                   size="sm"
                   onClick={handleDownloadTranslation}
                   disabled={isTranslating}
+                  className="border-white/10 hover:bg-white/5 text-gray-300"
                 >
                   <DownloadIcon className="w-4 h-4 mr-2" />
-                  Download Translation
+                  {t('results.downloadTranslation')}
                 </Button>
               </div>
             </div>
             {showTranslation && (
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-amber-500 mt-2 font-mono">
                 Showing {translationLanguage === 'en' ? 'English' : 'Russian'} translation
               </p>
             )}
@@ -262,9 +314,15 @@ export default function ResultsPage() {
           onStartNew={handleStartNew}
         />
 
+        {/* Feedback Section */}
+        <FeedbackForm
+          sessionId={sessionId}
+          className="max-w-xl mx-auto"
+        />
+
         {/* Session Info */}
         <p className="text-center text-sm text-muted-foreground">
-          Session ID: {sessionId.slice(0, 8)}...
+          {t('results.sessionId', { id: sessionId.slice(0, 8) + '...' })}
         </p>
       </div>
     </main>
@@ -356,6 +414,24 @@ function ErrorIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" x2="12" y1="8" y2="12" />
       <line x1="12" x2="12.01" y1="16" y2="16" />
+    </svg>
+  );
+}
+
+function EmailIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
     </svg>
   );
 }

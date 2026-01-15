@@ -114,9 +114,16 @@ journalctl -u agent-brain -f
 
 - Backend uses LLM fallback: Gemini -> Claude on 429/503 errors
 - Whisper model is "small" for speed (was "medium")
-- Reports are stored in Lithuanian, translated on demand
+- Reports are stored in Lithuanian, translated on demand via LLM before email
 - Admin key stored in localStorage on frontend
 - CORS allows Vercel frontend + localhost:3000
+
+## Theme System (Frontend)
+
+- **Default**: Dark theme via `className="dark"` on `<html>` in `layout.tsx`
+- **Admin pages**: Manage own theme, remove/add `.dark` class based on `localStorage.admin_theme`
+- **Cleanup pattern**: Admin pages restore `.dark` on unmount so frontend stays dark
+- **Tailwind**: Uses standard `.dark` class, NOT custom `.light` class
 
 ## SQLAlchemy + asyncpg Patterns (Backend)
 
@@ -136,6 +143,29 @@ journalctl -u agent-brain -f
 # Container: agent_postgres, User: agent, Database: agentbrain
 cat migration.sql | docker exec -i agent_postgres psql -U agent -d agentbrain
 ```
+
+## i18n Pattern (Email/Reports)
+
+- **Reports**: Generated in Lithuanian, translated via LLM if user language != 'lt'
+- **Email localization**: Use dictionary pattern for static text (greeting, footer)
+```python
+email_texts = {"lt": {...}, "en": {...}, "ru": {...}}
+texts = email_texts.get(language, email_texts["lt"])
+```
+- **Attachment filenames**: Also localized (`sauna-report-xxx.md` for EN)
+
+## Skill Evolution States
+
+Rules flow: `pending` → `approved` → `applied`
+- **pending**: Newly generated, awaiting review
+- **approved**: Ready for skill creation (`metadata->>'incorporated_in_skill' IS NULL`)
+- **applied**: Incorporated into skill version (`metadata->>'incorporated_in_skill'` set)
+
+## Question System
+
+Two separate systems - see `readme/QUESTION-SYSTEM.md` for full docs:
+- **Brain Config (YAML)**: Predefined question pool, selected by scoring algorithm
+- **Skill Document**: AI guidelines for follow-ups in precise mode, report formatting
 
 ## Protected Files (DO NOT MODIFY)
 

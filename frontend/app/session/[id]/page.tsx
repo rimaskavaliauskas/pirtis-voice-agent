@@ -10,9 +10,14 @@ import { QuestionCard } from '@/components/question-card';
 import { RoundIndicator } from '@/components/round-indicator';
 import { ProcessingOverlay } from '@/components/processing-overlay';
 import { SessionSkeleton } from '@/components/session-skeleton';
-import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState } from '@/lib/api';
+import { InterviewProgress } from '@/components/interview-progress';
+import { ContactForm } from '@/components/contact-form';
+import { PreciseModeFlow } from '@/components/precise-mode-flow';
+import { transcribeAudio, submitAnswers, finalizeSession, isValidSessionId, getSessionState, translateText } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Question, QuestionState, RecordingState, RiskFlag } from '@/lib/types';
+import { useTranslation } from '@/lib/translations';
+import { useUI } from '@/components/ui-provider';
+import type { Question, QuestionState, RecordingState, RiskFlag, InterviewMode, SlotStatus, ContactInfo } from '@/lib/types';
 
 // ============================================
 // Types
@@ -22,6 +27,7 @@ type InterviewPhase =
   | 'loading'
   | 'active'
   | 'submitting'
+  | 'collecting_contact'
   | 'finalizing'
   | 'error';
 
@@ -33,7 +39,13 @@ interface InterviewState {
   roundSummary: string | null;
   riskFlags: RiskFlag[];
   error: string | null;
+  interviewMode: InterviewMode;
+  slotStatus: SlotStatus[];
+  progressPercent: number;
 }
+
+// Cache for translated texts
+const translationCache = new Map<string, string>();
 
 // ============================================
 // Initial State
@@ -57,6 +69,12 @@ export default function InterviewPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  const { t, language } = useTranslation();
+  const { setSaunaPhase, setSaunaVisible } = useUI();
+
+  // State for translated question texts (key: original text, value: translated)
+  const [translatedTexts, setTranslatedTexts] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [state, setState] = useState<InterviewState>({
     phase: 'loading',
@@ -66,6 +84,9 @@ export default function InterviewPage() {
     roundSummary: null,
     riskFlags: [],
     error: null,
+    interviewMode: 'quick',
+    slotStatus: [],
+    progressPercent: 0,
   });
 
   // Fetch session state from backend
@@ -117,6 +138,9 @@ export default function InterviewPage() {
             note: rf.note || '',
             evidence: rf.evidence,
           })),
+          interviewMode: (response.interview_mode as InterviewMode) || 'quick',
+          slotStatus: response.slot_status || [],
+          progressPercent: response.progress_percent || 0,
         }));
       } catch (error) {
         console.error('Failed to fetch session:', error);
@@ -129,7 +153,100 @@ export default function InterviewPage() {
     };
 
     fetchSession();
-  }, [sessionId, router]);
+    setSaunaPhase('active');
+    setSaunaVisible(true);
+  }, [sessionId, router, setSaunaPhase, setSaunaVisible]);
+
+  // Translate questions when language changes or questions load
+  useEffect(() => {
+    // Clear translations immediately when content changes (prevents showing old/wrong text)
+    if (language !== 'lt') {
+      setTranslatedTexts({});
+    }
+
+    const translateQuestions = async () => {
+      if (language === 'lt' || state.questions.length === 0) {
+        setTranslatedTexts({});
+        return;
+      }
+
+      // Collect texts that need translation
+      const textsToTranslate: string[] = [];
+      state.questions.forEach(q => {
+        const cacheKey = `${language}:${q.question.text}`;
+        if (!translationCache.has(cacheKey)) {
+          textsToTranslate.push(q.question.text);
+        }
+      });
+      if (state.roundSummary) {
+        const cacheKey = `${language}:${state.roundSummary}`;
+        if (!translationCache.has(cacheKey)) {
+          textsToTranslate.push(state.roundSummary);
+        }
+      }
+
+      if (textsToTranslate.length === 0) {
+        // All already cached, just update state from cache
+        const newTranslated: Record<string, string> = {};
+        state.questions.forEach(q => {
+          const cacheKey = `${language}:${q.question.text}`;
+          if (translationCache.has(cacheKey)) {
+            newTranslated[q.question.text] = translationCache.get(cacheKey)!;
+          }
+        });
+        if (state.roundSummary) {
+          const cacheKey = `${language}:${state.roundSummary}`;
+          if (translationCache.has(cacheKey)) {
+            newTranslated[state.roundSummary] = translationCache.get(cacheKey)!;
+          }
+        }
+        setTranslatedTexts(newTranslated);
+        return;
+      }
+
+      setIsTranslating(true);
+      const newTranslated: Record<string, string> = {};
+
+      // Translate all texts in parallel
+      await Promise.all(
+        textsToTranslate.map(async (text) => {
+          const translated = await translateText(text, language as 'en' | 'ru');
+          const cacheKey = `${language}:${text}`;
+          translationCache.set(cacheKey, translated);
+          newTranslated[text] = translated;
+        })
+      );
+
+      // Add cached translations
+      state.questions.forEach(q => {
+        const cacheKey = `${language}:${q.question.text}`;
+        if (translationCache.has(cacheKey) && !newTranslated[q.question.text]) {
+          newTranslated[q.question.text] = translationCache.get(cacheKey)!;
+        }
+      });
+      if (state.roundSummary) {
+        const cacheKey = `${language}:${state.roundSummary}`;
+        if (translationCache.has(cacheKey) && !newTranslated[state.roundSummary]) {
+          newTranslated[state.roundSummary] = translationCache.get(cacheKey)!;
+        }
+      }
+
+      setTranslatedTexts(newTranslated);
+      setIsTranslating(false);
+    };
+
+    translateQuestions();
+  }, [language, state.questions, state.roundSummary]);
+
+  // Helper to get displayed text (translated or original)
+  // Returns null if translation is needed but not yet available (to show skeleton)
+  const getDisplayText = useCallback((originalText: string): string | null => {
+    if (language === 'lt') return originalText;
+    // If we have a translation, return it
+    if (translatedTexts[originalText]) return translatedTexts[originalText];
+    // Otherwise show skeleton (translation pending or in progress)
+    return null;
+  }, [language, translatedTexts]);
 
   // Get current question
   const currentQuestion = state.questions[state.activeQuestionIndex];
@@ -230,13 +347,12 @@ export default function InterviewPage() {
       const response = await submitAnswers(sessionId, answersRequest);
 
       if (response.is_complete) {
-        // All rounds done, finalize
-        setState((s) => ({ ...s, phase: 'finalizing' }));
-
-        await finalizeSession(sessionId);
-
-        // Redirect to results
-        router.push(`/results/${sessionId}`);
+        // All rounds done, go to contact collection
+        setState((s) => ({
+          ...s,
+          phase: 'collecting_contact',
+          slotStatus: response.slot_status || s.slotStatus,
+        }));
       } else {
         // Move to next round
         setState((s) => ({
@@ -247,6 +363,7 @@ export default function InterviewPage() {
           activeQuestionIndex: 0,
           roundSummary: response.round_summary,
           riskFlags: response.risk_flags,
+          slotStatus: response.slot_status || s.slotStatus,
         }));
 
         toast.success(`Round ${response.round - 1} complete! Starting Round ${response.round}`);
@@ -263,6 +380,36 @@ export default function InterviewPage() {
     setState((s) => ({ ...s, activeQuestionIndex: index }));
   }, []);
 
+  // Handle contact form submission
+  const handleContactSubmit = useCallback(async (contactInfo: ContactInfo) => {
+    setState((s) => ({ ...s, phase: 'finalizing' }));
+    setSaunaVisible(false); // Hide just before result
+
+    try {
+      await finalizeSession(sessionId, contactInfo);
+      router.push(`/results/${sessionId}`);
+    } catch (error) {
+      console.error('Finalize failed:', error);
+      toast.error('Failed to generate report. Please try again.');
+      setState((s) => ({ ...s, phase: 'collecting_contact' }));
+    }
+  }, [sessionId, router]);
+
+  // Handle contact form skip
+  const handleContactSkip = useCallback(async () => {
+    setState((s) => ({ ...s, phase: 'finalizing' }));
+    setSaunaVisible(false); // Hide just before result
+
+    try {
+      await finalizeSession(sessionId);
+      router.push(`/results/${sessionId}`);
+    } catch (error) {
+      console.error('Finalize failed:', error);
+      toast.error('Failed to generate report. Please try again.');
+      setState((s) => ({ ...s, phase: 'collecting_contact' }));
+    }
+  }, [sessionId, router]);
+
   // Render loading state with skeleton
   if (state.phase === 'loading') {
     return <SessionSkeleton />;
@@ -275,9 +422,9 @@ export default function InterviewPage() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <ErrorIcon className="w-12 h-12 mx-auto text-destructive" />
-            <h2 className="text-xl font-semibold">Error</h2>
+            <h2 className="text-xl font-semibold">{t('session.error')}</h2>
             <p className="text-muted-foreground">{state.error}</p>
-            <Button onClick={() => router.push('/')}>Go Home</Button>
+            <Button onClick={() => router.push('/')}>{t('session.goHome')}</Button>
           </CardContent>
         </Card>
       </main>
@@ -296,25 +443,67 @@ export default function InterviewPage() {
     );
   }
 
+  // Show contact collection form
+  if (state.phase === 'collecting_contact') {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <ContactForm
+          onSubmit={handleContactSubmit}
+          onSkip={handleContactSkip}
+          className="max-w-md w-full"
+        />
+      </main>
+    );
+  }
+
+  // Precise mode: Typeform-style single question flow
+  if (state.interviewMode === 'precise' && state.questions.length > 0) {
+    return (
+      <main className="min-h-screen p-4 md:p-8 pt-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold">{t('session.title')}</h1>
+        </div>
+        <PreciseModeFlow
+          sessionId={sessionId}
+          initialQuestion={state.questions[0].question}
+          initialProgress={state.progressPercent}
+          initialSlotStatus={state.slotStatus}
+          onComplete={() => router.push(`/results/${sessionId}`)}
+          onCollectContact={() => setState((s) => ({ ...s, phase: 'collecting_contact' }))}
+        />
+      </main>
+    );
+  }
+
+  // Quick mode: Original round-based flow
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Pirtis Design Interview</h1>
+        <div className="text-center space-y-2 pt-32">
+          <h1 className="text-2xl font-bold">{t('session.title')}</h1>
           <RoundIndicator
             currentRound={state.currentRound}
             questionsAnswered={confirmedCount}
           />
         </div>
 
+        {/* Interview Progress (Precise mode only) */}
+        {state.interviewMode === 'precise' && state.slotStatus.length > 0 && (
+          <InterviewProgress
+            slotStatus={state.slotStatus}
+            currentRound={state.currentRound}
+          />
+        )}
+
         {/* Round Summary (if available) */}
         {state.roundSummary && (
-          <Card className="bg-muted/50">
+          <Card className="glass-panel border-white/5">
             <CardContent className="pt-4">
-              <p className="text-sm">
-                <span className="font-medium">Previous round summary: </span>
-                {state.roundSummary}
+              <p className="text-sm text-gray-300">
+                <span className="font-medium text-primary">{t('session.roundSummary')} </span>
+                {getDisplayText(state.roundSummary) || (
+                  <span className="inline-block h-4 w-48 bg-white/10 rounded animate-pulse" />
+                )}
               </p>
             </CardContent>
           </Card>
@@ -326,13 +515,14 @@ export default function InterviewPage() {
             <div
               key={q.question.id}
               onClick={() => handleQuestionClick(index)}
-              className="cursor-pointer"
+              className="cursor-pointer transition-transform hover:scale-[1.02]"
             >
               <QuestionCard
                 questionNumber={index + 1}
-                questionText={q.question.text}
+                questionText={getDisplayText(q.question.text) || ''}
                 status={q.isConfirmed ? 'confirmed' : q.recordingState}
                 isActive={index === state.activeQuestionIndex}
+                isTranslating={getDisplayText(q.question.text) === null}
               />
             </div>
           ))}
@@ -340,14 +530,16 @@ export default function InterviewPage() {
 
         {/* Active Question Area */}
         {currentQuestion && !currentQuestion.isConfirmed && (
-          <Card className="p-6">
-            <div className="space-y-6">
-              <div className="text-center">
-                <p className="text-lg font-medium mb-2">
-                  Question {state.activeQuestionIndex + 1}
+          <Card className="glass-panel p-8 border-none shadow-2xl">
+            <div className="space-y-8">
+              <div className="text-center space-y-2">
+                <p className="text-lg font-medium text-primary">
+                  {t('session.question', { number: state.activeQuestionIndex + 1 })}
                 </p>
-                <p className="text-muted-foreground">
-                  {currentQuestion.question.text}
+                <p className="text-2xl font-light leading-relaxed text-white">
+                  {getDisplayText(currentQuestion.question.text) || (
+                    <span className="inline-block h-8 w-full max-w-xl bg-white/10 rounded animate-pulse" />
+                  )}
                 </p>
               </div>
 
@@ -369,7 +561,7 @@ export default function InterviewPage() {
               {currentQuestion.recordingState === 'done' && currentQuestion.transcript && (
                 <TranscriptPreview
                   transcript={currentQuestion.transcript}
-                  questionText={currentQuestion.question.text}
+                  questionText={getDisplayText(currentQuestion.question.text) || currentQuestion.question.text}
                   onConfirm={handleConfirmTranscript}
                   onRetry={handleRetryRecording}
                   className="mx-auto max-w-lg"
@@ -387,7 +579,7 @@ export default function InterviewPage() {
               onClick={handleSubmitRound}
               className="px-8"
             >
-              {state.currentRound === 3 ? 'Finish Interview' : `Submit Round ${state.currentRound}`}
+              {state.currentRound === 3 ? t('session.finishInterview') : t('session.submitRound', { number: state.currentRound })}
             </Button>
           </div>
         )}

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { LanguageProvider } from "@/lib/translations";
+import { UIProvider } from "@/components/ui-provider";
+import { PersistentSauna } from "@/components/persistent-sauna";
+import { UserHeader } from "@/components/user-header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,12 +28,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
       >
-        {children}
-        <Toaster />
+        <LanguageProvider>
+          <UIProvider>
+            <UserHeader />
+            <PersistentSauna />
+            {children}
+            <Toaster />
+          </UIProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

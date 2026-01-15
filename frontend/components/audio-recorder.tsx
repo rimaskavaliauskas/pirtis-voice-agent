@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
   AudioRecorder as AudioRecorderUtil,
   formatDuration,
@@ -10,6 +9,7 @@ import {
   createAudioUrl,
   revokeAudioUrl,
 } from '@/lib/audio-utils';
+import { useTranslation } from '@/lib/translations';
 import type { RecordingState } from '@/lib/types';
 
 // ============================================
@@ -25,23 +25,12 @@ interface AudioRecorderProps {
 }
 
 // ============================================
-// Icons (inline SVG for simplicity)
+// Icons
 // ============================================
 
 function MicIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" x2="12" y1="19" y2="22" />
@@ -51,15 +40,7 @@ function MicIcon({ className }: { className?: string }) {
 
 function StopIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="none"
-    >
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
       <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   );
@@ -67,15 +48,7 @@ function StopIcon({ className }: { className?: string }) {
 
 function PlayIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="none"
-    >
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
       <polygon points="5 3 19 12 5 21 5 3" />
     </svg>
   );
@@ -83,18 +56,7 @@ function PlayIcon({ className }: { className?: string }) {
 
 function TrashIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 6h18" />
       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
@@ -113,9 +75,9 @@ export function AudioRecorderComponent({
   maxDuration = 120,
   className = '',
 }: AudioRecorderProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<RecordingState>('idle');
   const [duration, setDuration] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,22 +92,15 @@ export function AudioRecorderComponent({
     setIsSupported(isAudioRecordingSupported());
   }, []);
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
-      if (recorderRef.current) {
-        recorderRef.current.destroy();
-      }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (audioUrl) {
-        revokeAudioUrl(audioUrl);
-      }
+      recorderRef.current?.destroy();
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (audioUrl) revokeAudioUrl(audioUrl);
     };
   }, [audioUrl]);
 
-  // Start recording
   const startRecording = useCallback(async () => {
     setError(null);
     setState('recording');
@@ -159,7 +114,7 @@ export function AudioRecorderComponent({
 
     const initialized = await recorder.initialize();
     if (!initialized) {
-      setError('Failed to access microphone. Please check permissions.');
+      setError('Check microphone permissions.');
       setState('idle');
       return;
     }
@@ -168,26 +123,19 @@ export function AudioRecorderComponent({
     recorder.start();
     onRecordingStart?.();
 
-    // Start duration timer
     setDuration(0);
     timerRef.current = setInterval(() => {
       setDuration((d) => {
         const newDuration = d + 1;
-        // Auto-stop at max duration
-        if (newDuration >= maxDuration) {
-          stopRecording();
-        }
+        if (newDuration >= maxDuration) stopRecording();
         return newDuration;
       });
     }, 1000);
   }, [maxDuration, onRecordingStart]);
 
-  // Stop recording
   const stopRecording = useCallback(async () => {
     if (!recorderRef.current) return;
-
     setState('processing');
-
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -195,12 +143,7 @@ export function AudioRecorderComponent({
 
     try {
       const blob = await recorderRef.current.stop();
-      setAudioBlob(blob);
-
-      // Create URL for playback
-      const url = createAudioUrl(blob);
-      setAudioUrl(url);
-
+      setAudioUrl(createAudioUrl(blob));
       setState('done');
       onRecordingComplete(blob);
     } catch (err) {
@@ -212,12 +155,8 @@ export function AudioRecorderComponent({
     }
   }, [onRecordingComplete]);
 
-  // Reset recording
   const resetRecording = useCallback(() => {
-    if (audioUrl) {
-      revokeAudioUrl(audioUrl);
-    }
-    setAudioBlob(null);
+    if (audioUrl) revokeAudioUrl(audioUrl);
     setAudioUrl(null);
     setDuration(0);
     setState('idle');
@@ -225,128 +164,96 @@ export function AudioRecorderComponent({
     setError(null);
   }, [audioUrl]);
 
-  // Play/pause audio preview
   const togglePlayback = useCallback(() => {
     if (!audioRef.current || !audioUrl) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
+    if (isPlaying) audioRef.current.pause();
+    else audioRef.current.play();
     setIsPlaying(!isPlaying);
   }, [audioUrl, isPlaying]);
 
-  // Handle audio ended
-  const handleAudioEnded = useCallback(() => {
-    setIsPlaying(false);
-  }, []);
-
   if (!isSupported) {
     return (
-      <Card className={`p-4 ${className}`}>
-        <p className="text-red-500 text-center">
-          Audio recording is not supported in this browser.
-        </p>
-      </Card>
+      <div className={`p-6 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-center ${className}`}>
+        {t('audio.notSupported')}
+      </div>
     );
   }
 
   return (
-    <Card className={`p-4 ${className}`}>
-      {/* Hidden audio element for playback */}
-      {audioUrl && (
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onEnded={handleAudioEnded}
-          className="hidden"
-        />
-      )}
+    <div className={`relative flex flex-col items-center justify-center py-8 ${className}`}>
+      {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />}
 
-      {/* Error message */}
-      {error && (
-        <p className="text-red-500 text-sm mb-2 text-center">{error}</p>
-      )}
+      {error && <p className="text-destructive text-sm mb-4 bg-destructive/10 px-3 py-1 rounded-full">{error}</p>}
 
-      {/* Recording interface */}
-      <div className="flex flex-col items-center gap-4">
-        {/* Duration display */}
-        <div className="text-2xl font-mono tabular-nums">
-          {formatDuration(duration)}
-        </div>
+      {/* Main Orb Container */}
+      <div className="relative">
 
-        {/* Recording indicator */}
+        {/* Ripples when recording */}
         {state === 'recording' && (
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground">Recording...</span>
-          </div>
+          <>
+            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
+          </>
         )}
 
-        {state === 'processing' && (
-          <span className="text-sm text-muted-foreground">Processing...</span>
-        )}
+        {/* Control Button */}
+        <div className="relative z-10 transition-all duration-300 transform">
 
-        {/* Controls */}
-        <div className="flex items-center gap-3">
           {state === 'idle' && (
-            <Button
-              size="lg"
-              onClick={startRecording}
-              disabled={disabled}
-              className="rounded-full w-16 h-16"
-            >
-              <MicIcon className="w-6 h-6" />
-            </Button>
+            <div className="flex flex-col items-center group">
+              <button
+                onClick={startRecording}
+                disabled={disabled}
+                className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary to-amber-600 shadow-[0_0_30px_rgba(251,191,36,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all outline-none"
+              >
+                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-glow" />
+                <MicIcon className="w-10 h-10 text-white drop-shadow-md relative z-10" />
+              </button>
+              <span className="mt-4 text-sm font-medium text-white/50 tracking-widest group-hover:text-primary transition-colors">{t('audio.tapToSpeak')}</span>
+            </div>
           )}
 
           {state === 'recording' && (
-            <Button
-              size="lg"
-              variant="destructive"
+            <button
               onClick={stopRecording}
-              className="rounded-full w-16 h-16"
+              className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)] flex items-center justify-center animate-pulse hover:bg-red-500/20 transition-all outline-none"
             >
-              <StopIcon className="w-6 h-6" />
-            </Button>
+              <StopIcon className="w-10 h-10 text-red-500" />
+            </button>
+          )}
+
+          {state === 'processing' && (
+            <div className="w-24 h-24 rounded-full border-4 border-white/10 border-t-primary animate-spin" />
           )}
 
           {state === 'done' && (
-            <>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={togglePlayback}
-                className="rounded-full w-12 h-12"
-              >
-                {isPlaying ? (
-                  <StopIcon className="w-5 h-5" />
-                ) : (
-                  <PlayIcon className="w-5 h-5" />
-                )}
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="icon" onClick={resetRecording} className="h-14 w-14 rounded-full border-white/10 hover:bg-white/5 hover:text-destructive">
+                <TrashIcon className="w-6 h-6" />
               </Button>
 
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={resetRecording}
-                className="rounded-full w-12 h-12"
+              <button
+                onClick={togglePlayback}
+                className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)]"
               >
-                <TrashIcon className="w-5 h-5" />
-              </Button>
-            </>
+                {isPlaying ? <StopIcon className="w-8 h-8" /> : <PlayIcon className="w-8 h-8 ml-1" />}
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Max duration hint */}
-        {state === 'idle' && (
-          <p className="text-xs text-muted-foreground">
-            Max {Math.floor(maxDuration / 60)} minutes
-          </p>
-        )}
       </div>
-    </Card>
+
+      {/* Timer / Status Text */}
+      <div className="mt-8 text-center h-8">
+        {state === 'recording' && (
+          <span className="text-2xl font-mono tabular-nums text-white tracking-widest animate-pulse">
+            {formatDuration(duration)}
+          </span>
+        )}
+        {state === 'processing' && <span className="text-sm text-white/50 animate-pulse">{t('audio.processing')}</span>}
+        {state === 'done' && <span className="text-sm text-green-400">{t('audio.captured')}</span>}
+      </div>
+    </div>
   );
 }
 

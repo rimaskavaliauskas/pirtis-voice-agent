@@ -401,19 +401,26 @@ async def get_pending_rules(db: AsyncSession) -> List[Dict[str, Any]]:
             'rule_text_en': metadata.get('rule_text_en', ''),
             'affected_questions': metadata.get('affected_questions', []),
             'created_at': row[6].isoformat() if row[6] else None,
+            'status': 'pending',
         })
 
     return rules
 
 
 async def get_approved_rules(db: AsyncSession) -> List[Dict[str, Any]]:
-    """Retrieve all approved rules, ordered by approval date (newest first)."""
+    """
+    Retrieve approved rules that have NOT been incorporated into a skill yet.
+
+    These are rules ready to be used in skill creation.
+    Ordered by approval date (newest first).
+    """
     result = await db.execute(
         text("""
             SELECT id, rule_text, rule_type, confidence_score,
                    source_pattern, metadata, created_at, approved_at
             FROM skill_learned_rules
             WHERE approved = TRUE
+              AND (metadata->>'incorporated_in_skill') IS NULL
             ORDER BY approved_at DESC
         """)
     )
@@ -432,6 +439,46 @@ async def get_approved_rules(db: AsyncSession) -> List[Dict[str, Any]]:
             'affected_questions': metadata.get('affected_questions', []),
             'created_at': row[6].isoformat() if row[6] else None,
             'approved_at': row[7].isoformat() if row[7] else None,
+            'status': 'approved',
+        })
+
+    return rules
+
+
+async def get_applied_rules(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Retrieve rules that have been incorporated into a skill version.
+
+    These are historical rules that have already been applied.
+    Ordered by incorporation date (newest first).
+    """
+    result = await db.execute(
+        text("""
+            SELECT id, rule_text, rule_type, confidence_score,
+                   source_pattern, metadata, created_at, approved_at
+            FROM skill_learned_rules
+            WHERE approved = TRUE
+              AND (metadata->>'incorporated_in_skill') IS NOT NULL
+            ORDER BY approved_at DESC
+        """)
+    )
+
+    rules = []
+    for row in result.fetchall():
+        metadata = _safe_parse_jsonb(row[5])
+
+        rules.append({
+            'id': row[0],
+            'rule_text': row[1],
+            'rule_type': row[2],
+            'confidence_score': row[3],
+            'source_pattern': row[4],
+            'rule_text_en': metadata.get('rule_text_en', ''),
+            'affected_questions': metadata.get('affected_questions', []),
+            'created_at': row[6].isoformat() if row[6] else None,
+            'approved_at': row[7].isoformat() if row[7] else None,
+            'status': 'applied',
+            'incorporated_in_skill': metadata.get('incorporated_in_skill'),
         })
 
     return rules

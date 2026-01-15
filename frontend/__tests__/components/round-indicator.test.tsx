@@ -30,7 +30,7 @@ describe('RoundIndicator', () => {
     );
 
     // Round 1 complete (3) + Round 2 answered (2) = 5 of 9 = ~56%
-    expect(screen.getByText('56% complete')).toBeInTheDocument();
+    expect(screen.getByText('56% DONE')).toBeInTheDocument();
   });
 
   it('shows question progress within round', () => {
@@ -42,7 +42,7 @@ describe('RoundIndicator', () => {
       />
     );
 
-    expect(screen.getByText('Question 2/3 in Round 1')).toBeInTheDocument();
+    expect(screen.getByText('Question 2/3')).toBeInTheDocument();
   });
 
   it('calculates 0% for start of interview', () => {
@@ -54,7 +54,7 @@ describe('RoundIndicator', () => {
       />
     );
 
-    expect(screen.getByText('0% complete')).toBeInTheDocument();
+    expect(screen.getByText('0% DONE')).toBeInTheDocument();
   });
 
   it('calculates 100% when all rounds complete', () => {
@@ -68,6 +68,6 @@ describe('RoundIndicator', () => {
     );
 
     // (2 * 3 + 3) / 9 = 100%
-    expect(screen.getByText('100% complete')).toBeInTheDocument();
+    expect(screen.getByText('100% DONE')).toBeInTheDocument();
   });
 });

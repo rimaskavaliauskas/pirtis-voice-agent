@@ -637,10 +637,18 @@ async def finalize_session(
     email_sent_at = None
     if contact_email:
         try:
+            # Translate report if not Lithuanian
+            email_report = final_markdown
+            if language and language != "lt":
+                from app.services.llm import translate_markdown
+                print(f"Translating report to {language} for email...")
+                email_report = await translate_markdown(final_markdown, language)
+                print(f"Report translated to {language}")
+
             success = send_report_email(
                 to_email=contact_email,
-                to_name=contact_name or "Klientas",
-                report_markdown=final_markdown,
+                to_name=contact_name or "Client",
+                report_markdown=email_report,
                 session_id=str(session_id),
                 language=language,
             )

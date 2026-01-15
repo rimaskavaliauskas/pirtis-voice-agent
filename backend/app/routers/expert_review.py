@@ -241,23 +241,38 @@ async def get_session_for_review(
     has_agent_messages = any(entry.get("role") == "agent" for entry in history)
 
     if has_agent_messages:
-        # New format: pair agent questions with user answers
-        current_question = None
+        # New format: match questions to answers by question_id
+        # Build a lookup of agent questions by question_id
+        agent_questions = {}
         for entry in history:
             if entry.get("role") == "agent":
-                current_question = {
-                    "question_id": entry.get("question_id", "unknown"),
+                qid = entry.get("question_id", "unknown")
+                agent_questions[qid] = {
+                    "question_id": qid,
                     "question_text": entry.get("text", ""),
                     "round": entry.get("round", 1),
                 }
-            elif entry.get("role") == "user" and current_question:
-                questions_answers.append(QuestionAnswer(
-                    question_id=current_question["question_id"],
-                    question_text=current_question["question_text"],
-                    answer_text=entry.get("text", ""),
-                    round=current_question["round"],
-                ))
-                current_question = None
+
+        # Match user answers to questions by question_id
+        for entry in history:
+            if entry.get("role") == "user":
+                qid = entry.get("question_id", "unknown")
+                if qid in agent_questions:
+                    q = agent_questions[qid]
+                    questions_answers.append(QuestionAnswer(
+                        question_id=q["question_id"],
+                        question_text=q["question_text"],
+                        answer_text=entry.get("text", ""),
+                        round=q["round"],
+                    ))
+                else:
+                    # User answer without matching agent question (shouldn't happen)
+                    questions_answers.append(QuestionAnswer(
+                        question_id=qid,
+                        question_text=f"[Question ID: {qid}]",
+                        answer_text=entry.get("text", ""),
+                        round=entry.get("round", 1),
+                    ))
     else:
         # Legacy format: only user messages exist, look up question text from brain config
         session_language = row[1] or 'lt'
