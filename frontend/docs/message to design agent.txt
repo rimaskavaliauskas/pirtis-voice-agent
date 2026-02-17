@@ -1,0 +1,21 @@
+
+Do you see this project? Files for Design Agent
+
+  | File                            | Purpose               | Notes for Agent
+                                                         |
+  |---------------------------------|-----------------------|---------------------------------------------------------------------------------------------|
+  | frontend/CLAUDE.md              | Main project doc      | ESSENTIAL - Contains architecture, 
+pages, interview modes, i18n patterns, backend endpoints |
+  | frontend/lib/translations/lt.ts | Lithuanian UI strings | All UI text labels and messages (primary language)                                          |
+  | frontend/lib/translations/ru.ts | Russian UI strings    | Same structure as lt.ts
+                                                         |
+  | frontend/lib/translations/en.ts | English UI strings    | Same structure as lt.ts
+                                                         |
+  | frontend/lib/types.ts           | TypeScript interfaces | All data structures (Question, SlotStatus, ContactInfo, etc.)                               |
+
+  Comment for the design agent:
+  This is a voice interview app for sauna design consulting. Two interview modes exist: Quick (3 
+rounds × 3 questions batch) and Precise (single question with AI follow-ups). The Precise mode uses a state machine: idle → recording → processing → confirming → transitioning → idle. All content is stored in Lithuanian and translated on-demand. Key UX components: landing page with language selector, session page with audio recorder, results page with markdown report. Uses shadcn/ui + 
+Tailwind with a dark glass-panel aesthetic.
+
+  The README.md is just generic Next.js boilerplate - skip it.

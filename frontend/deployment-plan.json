@@ -1,0 +1,100 @@
+{
+  "project": "pirtis-voice-agent",
+  "description": "Vercel deployment plan for Voice Agent Frontend",
+  "created": "2026-01-01",
+  "status": "in_progress",
+
+  "context": {
+    "frontend_path": "d:\\AI\\aleksandras-2-dalis\\voice-agent-dev\\frontend",
+    "backend_url": "http://65.108.246.252:8000",
+    "github_user": "rimaskavaliauskas",
+    "github_repo": "pirtis-voice-agent",
+    "vercel_project": "pirtis-voice-agent"
+  },
+
+  "environment_variables": [
+    {
+      "key": "NEXT_PUBLIC_API_URL",
+      "value": "/api/backend",
+      "targets": ["production", "preview"]
+    }
+  ],
+
+  "steps": [
+    {
+      "id": 1,
+      "name": "Fix vercel.json rewrite path",
+      "status": "completed",
+      "description": "Updated rewrite source from /api/:path* to /api/backend/:path* to match next.config.ts",
+      "commands": []
+    },
+    {
+      "id": 2,
+      "name": "Initialize Git repository",
+      "status": "pending",
+      "description": "Create local Git repository in frontend folder",
+      "commands": [
+        "cd d:\\AI\\aleksandras-2-dalis\\voice-agent-dev\\frontend",
+        "git init",
+        "git add .",
+        "git commit -m \"Initial commit: Voice Agent frontend\""
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Create GitHub repository",
+      "status": "pending",
+      "description": "Create public GitHub repo and push code",
+      "commands": [
+        "gh repo create pirtis-voice-agent --public --source=. --push"
+      ],
+      "expected_result": "Repository at github.com/rimaskavaliauskas/pirtis-voice-agent"
+    },
+    {
+      "id": 4,
+      "name": "Link to Vercel",
+      "status": "pending",
+      "description": "Connect project to Vercel and set environment variables",
+      "commands": [
+        "npx vercel link",
+        "npx vercel env add NEXT_PUBLIC_API_URL"
+      ],
+      "notes": "When prompted for env value, enter: /api/backend"
+    },
+    {
+      "id": 5,
+      "name": "Deploy to production",
+      "status": "pending",
+      "description": "Deploy the frontend to Vercel production",
+      "commands": [
+        "npx vercel --prod"
+      ],
+      "expected_result": "Deployment URL like https://pirtis-voice-agent.vercel.app"
+    },
+    {
+      "id": 6,
+      "name": "Enable auto-deploy",
+      "status": "pending",
+      "description": "Connect GitHub repo for automatic deployments on push",
+      "commands": [
+        "npx vercel git connect"
+      ],
+      "notes": "Can also be done via Vercel Dashboard: Project Settings → Git → Connect GitHub repo"
+    }
+  ],
+
+  "files_modified": [
+    {
+      "file": "frontend/vercel.json",
+      "change": "Updated rewrite source path to /api/backend/:path*"
+    }
+  ],
+
+  "verification": {
+    "checks": [
+      "Frontend loads at Vercel URL",
+      "API calls to /api/backend/* are proxied to VPS backend",
+      "Auto-deploy triggers on git push to main"
+    ]
+  }
+}
