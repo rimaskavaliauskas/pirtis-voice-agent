@@ -9,7 +9,7 @@ AI-powered voice interview system for personalized sauna (pirtis) design recomme
 | **Frontend URL** | https://pirtis-voice-agent.vercel.app |
 | **Admin Panel** | https://pirtis-voice-agent.vercel.app/admin |
 | **Backend API** | http://65.108.246.252:8000 |
-| **SSH to VPS** | `ssh -i "D:\AI\aleksandro kursas\SSHKEY\id_ed25519" root@65.108.246.252` |
+| **SSH to VPS** | `ssh -i ~/.ssh/id_ed25519 root@65.108.246.252` |
 | **Restart Backend** | `systemctl restart agent-brain` |
 | **View Logs** | `journalctl -u agent-brain -f` |
 
@@ -103,7 +103,7 @@ npx vercel --prod  # Deploy to Vercel
 
 ### Backend (on VPS)
 ```bash
-ssh -i "D:\AI\aleksandro kursas\SSHKEY\id_ed25519" root@65.108.246.252
+ssh -i ~/.ssh/id_ed25519 root@65.108.246.252
 cd /opt/agent-brain
 source venv/bin/activate
 systemctl restart agent-brain
