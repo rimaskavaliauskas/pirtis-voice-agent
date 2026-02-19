@@ -370,3 +370,37 @@ questions:
     round_hint: null
     slot_coverage: [stove_type, size_direction]
     risk_coverage: [RISK_ELECTRIC_LARGE_SPACE]
+
+# ============================================
+# Quick Mode Policy
+# ============================================
+modes:
+  quick:
+    enabled: true
+
+    limits:
+      max_questions: 8
+      max_clarifications: 0       # Stage 1: no clarify follow-ups
+      low_info_streak_max: 2
+
+    critical_slots:
+      - id: purpose
+        min_confidence: 0.60
+      - id: users
+        min_confidence: 0.60
+      - id: ritual
+        min_confidence: 0.60
+      - id: infrastructure
+        min_confidence: 0.60
+      - id: room_program
+        min_confidence: 0.55
+
+    clarify_threshold: 0.55       # Stage 1: unused, kept for Stage 2 compatibility
+
+    scoring_overrides:
+      weights:
+        missing_critical_slot_bonus: 2.0
+        uncertain_critical_slot_bonus: 1.2   # Stage 1: unused
+        resolve_risk_bonus: 0.0              # Stage 1: unused
+        diversify_topic_penalty: 0.4
+        repeat_slot_penalty: 0.7

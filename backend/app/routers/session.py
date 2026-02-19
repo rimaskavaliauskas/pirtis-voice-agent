@@ -35,8 +35,9 @@ from app.services.whisper import transcribe_audio
 from app.services.llm import extract_slots, generate_report, generate_clarification_question, generate_followup_question_v2
 from app.services.skill import get_skill_for_prompts
 from app.services.llm_v2 import generate_followup_question_v3
-from app.services.scoring import select_next_questions
+from app.services.scoring import select_next_questions, select_next_question_quick
 from app.services.risk import evaluate_risk_rules
+from app.services.quick_policy import evaluate_stop_conditions, calculate_low_info, calculate_quick_progress
 
 router = APIRouter()
 
@@ -168,10 +169,19 @@ async def start_session(
         for k, v in initial_slots.items()
     }
 
-    # Determine question count based on mode
-    question_count = 1 if interview_mode == "precise" else 3
+    # Both modes now use 1 question at a time
+    question_count = 1
 
-    # Select first questions
+    # Initialize quick_state for Quick mode
+    if interview_mode == "quick":
+        initial_state["quick_state"] = {
+            "asked_count": 0,
+            "low_info_streak": 0,
+            "last_question_id": None,
+            "stop_reason": None,
+        }
+
+    # Select first question(s)
     questions = select_next_questions(
         questions=brain_config.questions,
         slots=slots_for_scoring,
@@ -495,50 +505,125 @@ async def submit_answer(
                         "round": current_round,
                     })
     else:
-        # Quick mode: Round-based logic (3 rounds x 3 questions)
-        questions_in_round = sum(1 for h in state["history"] if h["round"] == current_round and h["role"] == "user")
-        round_complete = True  # In quick mode, all 3 questions submitted at once
+        # Quick mode: Iterative top-1 loop with stop conditions
+        import copy as _copy
 
-        is_complete = current_round >= 3 and round_complete
+        # Track questions asked
+        state["questions_asked_count"] = state.get("questions_asked_count", 0) + len(request.transcripts)
 
-        if is_complete:
-            next_questions = []
-            state["next_questions"] = []
-        elif round_complete:
-            # Advance to next round
-            next_round = current_round + 1
-            state["round"] = next_round
-            current_round = next_round
+        # Initialize quick_state if missing (backward compat)
+        quick_state = state.get("quick_state", {
+            "asked_count": 0,
+            "low_info_streak": 0,
+            "last_question_id": None,
+            "stop_reason": None,
+        })
 
-            next_questions = select_next_questions(
-                questions=brain_config.questions,
-                slots=slots_for_eval,
-                risk_flags=risk_flags,
-                asked_question_ids=state["asked_question_ids"],
-                current_round=next_round,
-                weights=brain_config.scoring_weights,
-                slot_definitions=brain_config.slots,
-                skip_rules=brain_config.skip_rules,
-                count=3,
+        # Capture slots before extraction for low_info detection
+        # (slots were already updated above, so compare with what we had)
+        # Use slots_updated list to determine if info was gained
+        answer_text = request.transcripts[0].text if request.transcripts else ""
+        is_low_info = len(slots_updated) == 0 or len(answer_text.strip()) < 15
+
+        if is_low_info:
+            quick_state["low_info_streak"] = quick_state.get("low_info_streak", 0) + 1
+        else:
+            quick_state["low_info_streak"] = 0
+
+        quick_state["asked_count"] = quick_state.get("asked_count", 0) + 1
+
+        # Load quick policy
+        quick_policy = brain_config.quick_policy
+
+        if quick_policy:
+            # Evaluate stop conditions
+            should_stop, stop_reason = evaluate_stop_conditions(
+                policy=quick_policy,
+                slots=state["slots"],
+                asked_count=quick_state["asked_count"],
+                low_info_streak=quick_state["low_info_streak"],
             )
 
-            state["next_questions"] = [
-                {"id": q.id, "text": q.text, "round_hint": q.round_hint}
-                for q in next_questions
-            ]
-            # Add agent questions to history for expert review (Quick mode)
-            for q in next_questions:
-                state["history"].append({
-                    "role": "agent",
-                    "question_id": q.id,
-                    "text": q.text,
-                    "round": next_round,
-                })
+            # Calculate progress based on critical slots
+            progress_percent = calculate_quick_progress(quick_policy, state["slots"])
+
+            if should_stop:
+                quick_state["stop_reason"] = stop_reason
+                is_complete = True
+                next_questions = []
+                state["next_questions"] = []
+            else:
+                # Select next question using quick scoring
+                next_q = select_next_question_quick(
+                    questions=brain_config.questions,
+                    slots=slots_for_eval,
+                    slots_raw=state["slots"],
+                    risk_flags=risk_flags,
+                    asked_question_ids=state["asked_question_ids"],
+                    weights=brain_config.scoring_weights,
+                    slot_definitions=brain_config.slots,
+                    skip_rules=brain_config.skip_rules,
+                    policy=quick_policy,
+                    last_question_id=quick_state.get("last_question_id"),
+                )
+
+                if next_q:
+                    quick_state["last_question_id"] = next_q.id
+                    next_questions = [next_q]
+                    state["next_questions"] = [
+                        {"id": next_q.id, "text": next_q.text, "round_hint": next_q.round_hint}
+                    ]
+                    # Add to history for expert review
+                    state["history"].append({
+                        "role": "agent",
+                        "question_id": next_q.id,
+                        "text": next_q.text,
+                        "round": 1,
+                    })
+                    is_complete = False
+                else:
+                    # No more questions available
+                    quick_state["stop_reason"] = "no_questions"
+                    is_complete = True
+                    next_questions = []
+                    state["next_questions"] = []
         else:
-            next_questions = [
-                Question(id=q["id"], text=q["text"], round_hint=q.get("round_hint"))
-                for q in state["next_questions"]
-            ]
+            # No quick policy configured — fallback to simple max 8 questions
+            if quick_state["asked_count"] >= 8:
+                is_complete = True
+                next_questions = []
+                state["next_questions"] = []
+            else:
+                next_questions = select_next_questions(
+                    questions=brain_config.questions,
+                    slots=slots_for_eval,
+                    risk_flags=risk_flags,
+                    asked_question_ids=state["asked_question_ids"],
+                    current_round=1,
+                    weights=brain_config.scoring_weights,
+                    slot_definitions=brain_config.slots,
+                    skip_rules=brain_config.skip_rules,
+                    count=1,
+                )
+                if next_questions:
+                    quick_state["last_question_id"] = next_questions[0].id
+                    state["next_questions"] = [
+                        {"id": q.id, "text": q.text, "round_hint": q.round_hint}
+                        for q in next_questions
+                    ]
+                    for q in next_questions:
+                        state["history"].append({
+                            "role": "agent",
+                            "question_id": q.id,
+                            "text": q.text,
+                            "round": 1,
+                        })
+                    is_complete = False
+                else:
+                    is_complete = True
+                    state["next_questions"] = []
+
+        state["quick_state"] = quick_state
 
     # Save updated state
     await db.execute(

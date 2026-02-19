@@ -475,6 +475,44 @@ async def import_config(
             )
             risk_rules_imported += 1
 
+        # Import modes.quick policy (stored in brain_config key-value table)
+        modes = config.get("modes", {})
+        quick_policy = modes.get("quick")
+        if quick_policy:
+            await db.execute(
+                text("""
+                    INSERT INTO brain_config (key, value, updated_at)
+                    VALUES ('modes_quick', :value, NOW())
+                    ON CONFLICT (key)
+                    DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+                """),
+                {"value": json.dumps(quick_policy)},
+            )
+
+        # Import skip rules if present
+        for skip_rule in config.get("skip_rules", []):
+            await db.execute(
+                text("""
+                    INSERT INTO brain_skip_rules (rule_id, condition_slot, condition_type, condition_values, skip_question_ids, enabled)
+                    VALUES (:id, :condition_slot, :condition_type, :condition_values, :skip_question_ids, :enabled)
+                    ON CONFLICT (rule_id)
+                    DO UPDATE SET
+                        condition_slot = EXCLUDED.condition_slot,
+                        condition_type = EXCLUDED.condition_type,
+                        condition_values = EXCLUDED.condition_values,
+                        skip_question_ids = EXCLUDED.skip_question_ids,
+                        enabled = EXCLUDED.enabled
+                """),
+                {
+                    "id": skip_rule["id"],
+                    "condition_slot": skip_rule.get("condition_slot"),
+                    "condition_type": skip_rule.get("condition_type"),
+                    "condition_values": skip_rule.get("condition_values", []),
+                    "skip_question_ids": skip_rule.get("skip_question_ids", []),
+                    "enabled": skip_rule.get("enabled", True),
+                },
+            )
+
         # Invalidate cache
         brain_config.invalidate_cache()
 

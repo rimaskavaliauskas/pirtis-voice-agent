@@ -5,9 +5,10 @@ Deterministic selection of next questions based on scoring algorithm.
 Includes skip rule evaluation to filter irrelevant questions.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from app.models import Question, RiskFlag, SlotValue
+from app.services.quick_policy import QuickPolicy, quick_adjustment
 
 
 def evaluate_skip_rules(
@@ -207,3 +208,114 @@ def select_next_questions(
         ))
 
     return selected
+
+
+def select_next_question_quick(
+    questions: List[Dict[str, Any]],
+    slots: Dict[str, SlotValue],
+    slots_raw: Dict[str, Dict[str, Any]],
+    risk_flags: List[RiskFlag],
+    asked_question_ids: List[str],
+    weights: Dict[str, float],
+    slot_definitions: List[Dict[str, Any]],
+    skip_rules: List[Dict[str, Any]],
+    policy: QuickPolicy,
+    last_question_id: Optional[str] = None,
+    confidence_threshold: float = 0.55,
+) -> Optional[Question]:
+    """
+    Select the next single question for Quick mode using base scoring + quick_adjustment.
+
+    Args:
+        questions: All enabled questions from database
+        slots: Current slot values as SlotValue objects (for base scoring)
+        slots_raw: Current slot values as raw dicts (for quick_adjustment)
+        risk_flags: Active risk flags
+        asked_question_ids: Already asked question IDs
+        weights: Base scoring weights from config
+        slot_definitions: Slot definitions from database
+        skip_rules: Skip rules to filter irrelevant questions
+        policy: QuickPolicy configuration
+        last_question_id: ID of the last question asked (for dedup)
+        confidence_threshold: Confidence below which slot is "missing"
+
+    Returns:
+        Single best Question, or None if no candidates remain
+    """
+    # Get top candidates using existing scoring (ignore round, set to 1)
+    candidates = select_next_questions(
+        questions=questions,
+        slots=slots,
+        risk_flags=risk_flags,
+        asked_question_ids=asked_question_ids,
+        current_round=1,  # Quick mode ignores rounds
+        weights=weights,
+        slot_definitions=slot_definitions,
+        skip_rules=skip_rules,
+        count=5,  # Get more candidates for re-ranking
+        confidence_threshold=confidence_threshold,
+    )
+
+    if not candidates:
+        return None
+
+    # Build a lookup from question ID to full question dict for quick_adjustment
+    q_lookup = {q.get("question_id"): q for q in questions}
+    asked_set = set(asked_question_ids)
+
+    # Re-rank with quick_adjustment
+    scored = []
+    for candidate in candidates:
+        q_dict = q_lookup.get(candidate.id)
+        if not q_dict:
+            continue
+
+        # Calculate base score (re-derive for this candidate)
+        missing_slots = set()
+        for slot_def in slot_definitions:
+            slot_key = slot_def.get("slot_key") or slot_def.get("key")
+            if slot_key:
+                slot_value = slots.get(slot_key)
+                if slot_value is None or slot_value.confidence < confidence_threshold:
+                    missing_slots.add(slot_key)
+
+        required_slots = {
+            s.get("slot_key") or s.get("key")
+            for s in slot_definitions
+            if s.get("is_required", False)
+        }
+
+        base_score = calculate_question_score(
+            question=q_dict,
+            current_round=1,
+            missing_slots=missing_slots,
+            active_risk_codes={rf.code for rf in risk_flags},
+            asked_question_ids=asked_set,
+            required_slots=required_slots,
+            weights=weights,
+        )
+
+        adj = quick_adjustment(
+            question=q_dict,
+            slots=slots_raw,
+            policy=policy,
+            last_question_id=last_question_id,
+            asked_question_ids=asked_set,
+        )
+
+        final_score = base_score + adj
+        scored.append((final_score, candidate))
+
+    if not scored:
+        return None
+
+    # Sort by final score descending
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Pick top, skipping last_question_id for dedup
+    for score, candidate in scored:
+        if candidate.id != last_question_id:
+            return candidate
+
+    # All candidates are the same as last — return top anyway
+    return scored[0][1]

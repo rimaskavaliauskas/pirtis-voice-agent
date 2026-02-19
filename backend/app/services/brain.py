@@ -21,6 +21,7 @@ class BrainConfigLoader:
         self._skip_rules: Optional[List[Dict[str, Any]]] = None
         self._scoring_weights: Optional[Dict[str, float]] = None
         self._config_values: Dict[str, Any] = {}
+        self._quick_policy = None  # Cached QuickPolicy instance
 
     async def load_all(self, db: AsyncSession, force_reload: bool = False) -> None:
         if force_reload or self._slots is None:
@@ -35,6 +36,8 @@ class BrainConfigLoader:
             self._scoring_weights = await self._load_scoring_weights(db)
         if force_reload or not self._config_values:
             self._config_values = await self._load_config_values(db)
+        if force_reload or self._quick_policy is None:
+            self._quick_policy = self._build_quick_policy()
 
     async def _load_slots(self, db: AsyncSession) -> List[Dict[str, Any]]:
         result = await db.execute(text("""
@@ -113,6 +116,14 @@ class BrainConfigLoader:
     def get_config_value(self, key: str, default: Any = None) -> Any:
         return self._config_values.get(key, default)
 
+    def _build_quick_policy(self):
+        from app.services.quick_policy import load_quick_policy
+        return load_quick_policy(self._config_values)
+
+    @property
+    def quick_policy(self):
+        return self._quick_policy
+
     @property
     def slots(self) -> List[Dict[str, Any]]:
         return self._slots or []
@@ -140,6 +151,7 @@ class BrainConfigLoader:
         self._skip_rules = None
         self._scoring_weights = None
         self._config_values = {}
+        self._quick_policy = None
 
     async def export_to_yaml(self, db: AsyncSession) -> str:
         await self.load_all(db, force_reload=True)
@@ -150,6 +162,10 @@ class BrainConfigLoader:
             "skip_rules": [{"id": s["rule_id"], "condition_slot": s["condition_slot"], "condition_type": s["condition_type"], "condition_values": s["condition_values"], "skip_question_ids": s["skip_question_ids"]} for s in self.skip_rules],
             "questions": [{"id": q["question_id"], "text_lt": q["text_lt"], "text_en": q["text_en"], "base_priority": q["base_priority"], "round_hint": q["round_hint"], "slot_coverage": q["slot_coverage"], "risk_coverage": q["risk_coverage"]} for q in self.questions],
         }
+        # Include modes.quick if configured
+        modes_quick = self._config_values.get("modes_quick")
+        if modes_quick:
+            config["modes"] = {"quick": modes_quick}
         return yaml.dump(config, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
 
