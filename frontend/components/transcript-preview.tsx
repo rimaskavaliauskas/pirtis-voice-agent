@@ -67,7 +67,7 @@ export function TranscriptPreview({
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-              <span className="ml-2 text-gray-400">{t('transcript.transcribing')}</span>
+              <span className="ml-2 text-gray-400">{t('session.processing')}</span>
             </div>
           ) : isEditing ? (
             <div className="space-y-3">

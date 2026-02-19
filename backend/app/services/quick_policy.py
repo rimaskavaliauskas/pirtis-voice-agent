@@ -30,6 +30,19 @@ class QuickPolicy:
     question_pool: Optional[Dict[str, List[str]]] = None  # {include_tags, exclude_tags}
 
 
+def _slot_has_value(slot_data: Dict[str, Any], min_confidence: float = 0.0) -> bool:
+    """Check if a slot has a real value (not None, not UNKNOWN, meets confidence)."""
+    value = slot_data.get("value")
+    if value is None:
+        return False
+    if isinstance(value, str) and value.strip().upper() == "UNKNOWN":
+        return False
+    confidence = slot_data.get("confidence", 0.0)
+    if confidence < min_confidence:
+        return False
+    return True
+
+
 def load_quick_policy(config_values: Dict[str, Any]) -> Optional[QuickPolicy]:
     """
     Parse modes.quick from brain config values.
@@ -89,14 +102,14 @@ def evaluate_stop_conditions(
         - "low_info_streak"
         - None if should not stop
     """
-    # 3A: All critical slots have value
+    # 3A: All critical slots have real value with sufficient confidence
     if policy.critical_slots:
         all_filled = True
         for cs in policy.critical_slots:
             slot_id = cs.get("id", "")
+            min_conf = cs.get("min_confidence", 0.6)
             slot_data = slots.get(slot_id, {})
-            value = slot_data.get("value")
-            if value is None:
+            if not _slot_has_value(slot_data, min_conf):
                 all_filled = False
                 break
         if all_filled:
@@ -130,18 +143,16 @@ def calculate_low_info(
     if len(answer_text.strip()) < min_text_length:
         return True
 
-    # Count slots that got a new or changed value
+    # Count slots that got a new real value
     updates = 0
     for key, after_data in slots_after.items():
         before_data = slots_before.get(key, {})
-        before_val = before_data.get("value")
-        after_val = after_data.get("value")
+        had_value = _slot_has_value(before_data)
+        has_value = _slot_has_value(after_data)
 
-        # New value appeared
-        if before_val is None and after_val is not None:
+        if has_value and not had_value:
             updates += 1
-        # Value changed
-        elif before_val != after_val and after_val is not None:
+        elif has_value and had_value and before_data.get("value") != after_data.get("value"):
             updates += 1
 
     return updates == 0
@@ -172,7 +183,7 @@ def quick_adjustment(
         slot_id = cs["id"]
         if slot_id in slot_coverage:
             slot_data = slots.get(slot_id, {})
-            if slot_data.get("value") is None:
+            if not _slot_has_value(slot_data, cs.get("min_confidence", 0.6)):
                 adjustment += weights.get("missing_critical_slot_bonus", 2.0)
 
     # Diversify topic penalty: penalize if same topic as last question
@@ -184,17 +195,16 @@ def quick_adjustment(
         # so we use a simpler heuristic: same round_hint = same topic area
         # Skip penalty if question covers a missing critical slot (important enough)
         covers_missing_critical = any(
-            cs["id"] in slot_coverage and slots.get(cs["id"], {}).get("value") is None
+            cs["id"] in slot_coverage and not _slot_has_value(slots.get(cs["id"], {}), cs.get("min_confidence", 0.6))
             for cs in policy.critical_slots
         )
         if not covers_missing_critical and question_id == last_question_id:
             adjustment -= weights.get("diversify_topic_penalty", 0.4)
 
-    # Repeat slot penalty: penalize if all covered slots already have values
-    # and none changed after being asked before
+    # Repeat slot penalty: penalize if all covered slots already have real values
     if slot_coverage:
         all_covered_filled = all(
-            slots.get(s, {}).get("value") is not None
+            _slot_has_value(slots.get(s, {}))
             for s in slot_coverage
         )
         if all_covered_filled:
@@ -215,6 +225,6 @@ def calculate_quick_progress(
 
     filled = sum(
         1 for cs in policy.critical_slots
-        if slots.get(cs["id"], {}).get("value") is not None
+        if _slot_has_value(slots.get(cs["id"], {}), cs.get("min_confidence", 0.6))
     )
     return int(100 * filled / len(policy.critical_slots))
