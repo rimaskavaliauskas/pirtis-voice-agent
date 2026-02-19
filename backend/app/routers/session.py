@@ -42,6 +42,16 @@ from app.services.quick_policy import evaluate_stop_conditions, calculate_low_in
 router = APIRouter()
 
 
+def _has_real_value(slot_data: dict) -> bool:
+    """Check if slot has a real value (not None, not UNKNOWN)."""
+    value = slot_data.get("value")
+    if value is None:
+        return False
+    if isinstance(value, str) and value.strip().upper() == "UNKNOWN":
+        return False
+    return True
+
+
 def calculate_slot_status(slots: dict, slot_definitions: list) -> list[SlotStatus]:
     """Calculate slot status for frontend display."""
     result = []
@@ -51,11 +61,11 @@ def calculate_slot_status(slots: dict, slot_definitions: list) -> list[SlotStatu
         slot_data = slots.get(key, {})
 
         confidence = slot_data.get("confidence", 0.0)
-        value = slot_data.get("value")
+        has_value = _has_real_value(slot_data)
 
-        if value is not None and confidence >= 0.7:
+        if has_value and confidence >= 0.7:
             status = "filled"
-        elif value is not None and confidence >= 0.4:
+        elif has_value and confidence >= 0.4:
             status = "partial"
         else:
             status = "empty"
@@ -83,10 +93,9 @@ def calculate_progress_percent(slots: dict, slot_definitions: list) -> int:
 
     def slot_fill_level(slot_key: str) -> float:
         slot_data = slots.get(slot_key, {})
-        value = slot_data.get("value")
         confidence = slot_data.get("confidence", 0.0)
 
-        if value is None:
+        if not _has_real_value(slot_data):
             return 0.0
         elif confidence >= 0.7:
             return 1.0
@@ -279,6 +288,13 @@ async def submit_answer(
     Extracts slots using LLM, evaluates risks, selects next questions.
     In precise mode, may return clarification question if confidence is low.
     """
+    import time as _time
+    _t0 = _time.time()
+    def _elapsed(label):
+        print(f"[TIMING] {label}: {_time.time() - _t0:.1f}s")
+
+    _elapsed("request_received")
+
     # Load session
     result = await db.execute(
         text("SELECT round, state FROM sessions WHERE session_id = :id"),
@@ -294,6 +310,8 @@ async def submit_answer(
 
     # Load brain config
     await brain_config.load_all(db)
+    _elapsed("brain_config_loaded")
+
     # Load skill for enhanced question generation
     skill_content = None
     try:
@@ -302,7 +320,7 @@ async def submit_answer(
             print(f"Loaded skill v{skill_content['version']} for question generation")
     except Exception as e:
         print(f"Warning: Could not load skill: {e}")
-
+    _elapsed("skill_loaded")
 
     # Combine all transcripts into one answer
     combined_answer = "\n\n".join([
@@ -326,7 +344,9 @@ async def submit_answer(
         state["questions_asked_count"] = state.get("questions_asked_count", 0) + len(request.transcripts)
 
     # Extract slots using LLM
+    _elapsed("before_extract_slots")
     extraction_result = await extract_slots(state, combined_answer)
+    _elapsed("after_extract_slots")
 
     # Update slots
     slots_updated = []
@@ -394,8 +414,9 @@ async def submit_answer(
                 original_question=original_question,
                 user_answer=user_answer,
             )
+            _elapsed("after_clarification_gen")
 
-    # Determine completion logic
+    _elapsed("before_completion_logic")
     if interview_mode == "precise":
         # Precise mode: Continuous flow, no rounds
         # Complete when: progress >= 85% OR asked 12+ questions OR no more relevant questions
@@ -404,15 +425,16 @@ async def submit_answer(
 
         # Check for all required slots filled with high confidence
         required_slots_filled = all(
-            state["slots"].get(s.get("slot_key"), {}).get("confidence", 0) >= 0.7
+            _has_real_value(state["slots"].get(s.get("slot_key"), {}))
+            and state["slots"].get(s.get("slot_key"), {}).get("confidence", 0) >= 0.7
             for s in brain_config.slots if s.get("is_required", False)
         )
 
-        # More conservative completion: require 90% progress OR 12+ questions
-        # AND minimum 6 questions asked to ensure thorough interview
+        # Completion: require minimum 8 questions AND (progress >= 95% OR max reached)
+        # This ensures thorough coverage of all topics
         is_complete = (
-            questions_asked >= 6 and (
-                progress_percent >= 90 or
+            questions_asked >= 8 and (
+                progress_percent >= 95 or
                 questions_asked >= max_questions
             )
         )
@@ -459,7 +481,8 @@ async def submit_answer(
                         collected_slots=state["slots"],
                         missing_slots=state.get("unknown_slots", []),
                     )
-            
+                _elapsed("after_followup_gen")
+
             if ai_followup:
                 # Use AI-generated question
                 ai_question_id = f"AI_FOLLOWUP_{questions_asked}"
@@ -626,6 +649,7 @@ async def submit_answer(
         state["quick_state"] = quick_state
 
     # Save updated state
+    _elapsed("before_db_save")
     await db.execute(
         text("""
             UPDATE sessions
@@ -638,6 +662,7 @@ async def submit_answer(
             "id": session_id,
         },
     )
+    _elapsed("DONE")
 
     return SubmitAnswerResponse(
         session_id=session_id,

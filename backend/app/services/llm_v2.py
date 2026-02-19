@@ -85,7 +85,7 @@ def _call_gemini(prompt: str) -> str:
     """Call Gemini API."""
     client = _get_gemini_client()
     response = client.models.generate_content(
-        model="models/gemini-flash-latest",
+        model="gemini-2.0-flash",
         contents=prompt,
     )
     return response.text

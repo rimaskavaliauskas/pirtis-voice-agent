@@ -9,7 +9,7 @@ AI-powered voice interview system for personalized sauna (pirtis) design recomme
 | **Frontend URL** | https://pirtis-voice-agent.vercel.app |
 | **Admin Panel** | https://pirtis-voice-agent.vercel.app/admin |
 | **Backend API** | http://65.108.246.252:8000 |
-| **SSH to VPS** | `ssh -i ~/.ssh/id_ed25519 root@65.108.246.252` |
+| **SSH to VPS** | `ssh -i /home/rimas/ai-projects/svarbus/SSHKEY/id_ed25519 -o IdentitiesOnly=yes root@65.108.246.252` |
 | **Restart Backend** | `systemctl restart agent-brain` |
 | **View Logs** | `journalctl -u agent-brain -f` |
 
@@ -38,7 +38,7 @@ Next.js 16 + shadcn/ui    -->  FastAPI + Uvicorn
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page with language selector (LT/EN/RU) |
-| `/session/[id]` | Interview session (3 rounds x 3 questions) |
+| `/session/[id]` | Interview session (iterative single-question flow) |
 | `/results/[id]` | Final report with translation buttons |
 | `/admin` | Brain configuration management |
 
@@ -78,7 +78,8 @@ POST /admin/skill/versions/create - Create new skill version from approved rules
 - `app/routers/session.py` - Session endpoints
 - `app/routers/admin.py` - Admin + expert review endpoints
 - `app/routers/skill_admin.py` - Skill evolution endpoints
-- `app/services/llm.py` - Gemini + Claude fallback
+- `app/services/llm.py` - Gemini + Claude fallback (model: `gemini-2.0-flash`)
+- `app/services/quick_policy.py` - Quick mode stop conditions + scoring adjustments
 - `app/services/skill.py` - Skill version CRUD + caching
 - `app/services/skill_evolution.py` - Rule generation from expert feedback
 - `app/services/whisper.py` - STT transcription
@@ -87,7 +88,7 @@ POST /admin/skill/versions/create - Create new skill version from approved rules
 ## User Flow
 
 1. **Landing** - Select language (LT/EN/RU) -> Start Interview
-2. **Session** - 3 rounds x 3 questions -> Voice recording -> Transcription -> Confirm
+2. **Session** - Iterative Q&A (1 question at a time) -> Voice recording -> Transcription -> Confirm
 3. **Results** - View report -> Translate (EN/RU) -> Download
 
 ## Development
@@ -98,12 +99,12 @@ cd frontend
 npm install
 npm run dev        # localhost:3000
 npm run build      # Build for production
-npx vercel --prod  # Deploy to Vercel
+cd .. && npx vercel --prod  # Deploy from monorepo root (Vercel Root Directory = frontend)
 ```
 
 ### Backend (on VPS)
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@65.108.246.252
+ssh -i /home/rimas/ai-projects/svarbus/SSHKEY/id_ed25519 -o IdentitiesOnly=yes root@65.108.246.252
 cd /opt/agent-brain
 source venv/bin/activate
 systemctl restart agent-brain
@@ -113,10 +114,28 @@ journalctl -u agent-brain -f
 ## Important Notes
 
 - Backend uses LLM fallback: Gemini -> Claude on 429/503 errors
-- Whisper model is "small" for speed (was "medium")
+- Whisper model is "medium" on VPS (CPU only, no GPU)
 - Reports are stored in Lithuanian, translated on demand via LLM before email
 - Admin key stored in localStorage on frontend
 - CORS allows Vercel frontend + localhost:3000
+
+## Gemini API Gotchas
+
+- **Model alias**: `models/gemini-flash-latest` is extremely slow (~30-60s). Always use explicit `gemini-2.0-flash` (~0.5s)
+- **Free tier**: Throttles every request to 30-60s. Must use Tier 1+ (pay-as-you-go) for production
+- **Tier check**: Google AI Studio → API Keys → check "Pricing plan" column
+
+## LLM Slot Extraction — UNKNOWN Sentinel
+
+When LLM can't extract a slot value, it returns `"UNKNOWN"` (string), NOT `None`. Any code checking `value is None` will treat UNKNOWN as filled. Always use a helper:
+```python
+def _has_real_value(slot_data):
+    value = slot_data.get("value")
+    if value is None: return False
+    if isinstance(value, str) and value.strip().upper() == "UNKNOWN": return False
+    return True
+```
+This pattern applies in: `quick_policy.py`, `session.py` (progress calc, slot status, stop conditions).
 
 ## Theme System (Frontend)
 
@@ -161,6 +180,13 @@ Rules flow: `pending` → `approved` → `applied`
 - **approved**: Ready for skill creation (`metadata->>'incorporated_in_skill' IS NULL`)
 - **applied**: Incorporated into skill version (`metadata->>'incorporated_in_skill'` set)
 
+## Interview Modes
+
+- **Quick**: Iterative 1-question loop, stops on: all critical slots filled / max 8 questions / 2 low-info answers. Uses `quick_policy.py` + `scoring.py` (no LLM for question selection)
+- **Precise**: AI-generated follow-up questions via LLM, stops on: progress ≥ 95% + min 8 questions / max 12 questions
+- Both modes use same frontend component (`PreciseModeFlow`), backend drives differences
+- Config: `modes.quick` in `brain_config` DB table, critical slots with min_confidence thresholds
+
 ## Question System
 
 Two separate systems - see `readme/QUESTION-SYSTEM.md` for full docs:
@@ -169,14 +195,5 @@ Two separate systems - see `readme/QUESTION-SYSTEM.md` for full docs:
 
 ## Protected Files (DO NOT MODIFY)
 
-These files handle backend integration - changes break the app:
-- `frontend/lib/api.ts` - API client with all backend calls
-- `frontend/lib/types.ts` - TypeScript interfaces matching backend
-- `frontend/lib/audio-utils.ts` - Audio processing utilities
-
-## Multi-Agent Handoff
-
-When handing frontend work to another AI agent:
-- `frontend/DESIGN_AGENT_INSTRUCTIONS.md` - What can/cannot be changed
-- `frontend/FRONTEND_TECHNICAL_SPEC.md` - Complete API contract and state docs
-- Agent must create `DESIGN_CHANGES.md` when done to document changes
+- `frontend/lib/api.ts`, `frontend/lib/types.ts`, `frontend/lib/audio-utils.ts` — backend integration, changes break the app
+- Multi-agent handoff docs: `frontend/DESIGN_AGENT_INSTRUCTIONS.md`, `frontend/FRONTEND_TECHNICAL_SPEC.md`
